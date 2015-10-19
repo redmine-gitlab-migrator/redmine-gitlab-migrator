@@ -1,0 +1,9 @@
+*~
+*.pyc
+*.log
+*.lock
+*.db
+build/
+.coverage
+.cache
+*.egg-info

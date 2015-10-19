@@ -1,0 +1,82 @@
+#!/bin/env python3
+import argparse
+import sys
+
+from redmine_gitlab_migrator.redmine import RedmineProject, RedmineClient
+from redmine_gitlab_migrator.gitlab import GitlabProject, GitlabClient
+from redmine_gitlab_migrator.converters import convert_issue
+
+
+"""Migrates issues and roadmaps from redmine to gitlab
+"""
+
+def parse_args():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('redmine_project_url')
+    parser.add_argument('gitlab_project_url')
+    parser.add_argument('--redmine-key', required=True,
+                        help="Redmine administrator API key")
+    parser.add_argument('--gitlab-key', required=True,
+                        help="Gitlab administrator API key")
+    parser.add_argument('--check', required=True, action='store_true', default=False,
+                        help="do not perform any action, just check everything is ready for migration")
+    return parser.parse_args()
+
+
+def check_users(redmine_project, gitlab_project):
+    users = redmine_project.get_participants()
+    nicks = [i['login'] for i in users]
+    sys.stdout.write(', '.join(nicks)+ ' ')
+
+    return gitlab_project.get_instance().check_users_exist(nicks)
+
+
+def check_no_issue(redmine_project, gitlab_project):
+    return len(gitlab_project.get_issues()) == 0
+
+
+def check_no_milestone(redmine_project, gitlab_project):
+    return len(gitlab_project.get_milestones()) == 0
+
+
+def main(args):
+    redmine = RedmineClient(args.redmine_key)
+    gitlab = GitlabClient(args.gitlab_key)
+
+    redmine_project = RedmineProject(args.redmine_project_url, redmine)
+    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab)
+
+    gitlab_instance = gitlab_project.get_instance()
+
+    gitlab_users_index = gitlab_instance.get_users_index()
+    redmine_users_index = redmine_project.get_users_index()
+
+    def check(func, message):
+        sys.stdout.write('{}... '.format(message))
+        sys.stdout.flush()
+        ret = func(redmine_project, gitlab_project)
+        if ret:
+            print('OK')
+        else:
+            print('FAILED')
+            exit(1)
+
+    check(check_users, 'Required users presence')
+    check(check_no_issue, 'Project has no pre-existing issue')
+    check(check_no_milestone, 'Project has no pre-existing milestone')
+
+    # Get issues
+
+    issues = redmine_project.get_all_issues()
+    issues_data = (convert_issue(i, redmine_users_index, gitlab_users_index)
+                   for i in issues)
+
+    for data, meta in issues_data:
+        created = gitlab_project.create_issue(data, meta)
+        #created = {'iid': 42, 'title': 'TEST'}
+        print('#{iid} {title}'.format(**created))
+
+
+if __name__ == '__main__':
+    args = parse_args()
+    main(args)
