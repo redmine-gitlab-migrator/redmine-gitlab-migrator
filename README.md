@@ -8,6 +8,7 @@ Does
 - migration of issues, keeping as much metadata as possible
   - your trackers become tags
   - issue comments are kept and assigned to the right users
+  - issue final status (open/closed) is kept (not status history)
   - issues assignations are kept
   - keep issues numbers (ex: `#123`)
   - keep issue/notes authors
@@ -29,6 +30,7 @@ Does not
 - Keeps "watchers" on tickets (gitlab API v3 doe not expose it)
 - Keeps date/times as metadata
 - Keeps track of issue relations orientation
+- Remember who and when the issue was closed
 
 Requires
 --------
@@ -42,9 +44,7 @@ Requires
 TODO
 ----
 
-- Issues relations
 - migration of roadmaps
-- Keeps who closed
 - clarify body note (change API/test)
 - Do a script to migrate issue numbers (iid) using a sql connection
 
