@@ -63,12 +63,10 @@ class GitlabProject(Project):
 
         # Handle issues notes
         issue_notes_url = '{}/notes'.format(issue_url, 'notes')
-        for note in meta['notes']:
-            sudo_user, body = note['sudo'], note['body']
-
+        for note_data, note_meta in meta['notes']:
             self.api.post(
-                issue_notes_url, data={'body': body},
-                headers={'SUDO': sudo_user})
+                issue_notes_url, data=note_data,
+                headers={'SUDO': note_meta['sudo_user']})
 
         # Handle closed status
         if meta['must_close']:

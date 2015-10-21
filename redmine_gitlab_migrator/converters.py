@@ -23,7 +23,9 @@ def convert_notes(redmine_issue_journals, redmine_user_index):
     Adds metadata as comment
 
     :param redmine_issue_journals: list of redmine "journals"
-    :rtype: yielded dicts with "sudo" and "body" keys.
+    :return: yielded couple ``data``, ``meta``. ``data`` is the API payload for
+        an issue note and meta a dict (containing, at the moment, only a
+        "sudo_user" key).
     """
 
     for entry in redmine_issue_journals:
@@ -41,7 +43,7 @@ def convert_notes(redmine_issue_journals, redmine_user_index):
                     'Redmine user {} is unknown, attribute note '
                     'to current admin\n'.format(entry['user']))
                 author = None
-            yield {'body': body, 'sudo': author}
+            yield {'body': body}, {'sudo_user': author}
 
 
 def relations_to_string(relations, issue_id):

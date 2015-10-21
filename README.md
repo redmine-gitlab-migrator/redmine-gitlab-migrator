@@ -45,7 +45,6 @@ TODO
 ----
 
 - migration of roadmaps
-- clarify body note (change API/test)
 - Do a script to migrate issue numbers (iid) using a sql connection
 
 Let's go
