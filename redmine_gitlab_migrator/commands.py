@@ -7,11 +7,15 @@ from redmine_gitlab_migrator.gitlab import GitlabProject, GitlabClient
 from redmine_gitlab_migrator.converters import convert_issue
 
 
-"""Migrates issues and roadmaps from redmine to gitlab
+"""Migration commands for issues and roadmaps from redmine to gitlab
 """
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("subcommand",
+                        choices=('issues', 'roadmap'),
+                        help='subcommand')
     parser.add_argument('redmine_project_url')
     parser.add_argument('gitlab_project_url')
     parser.add_argument('--redmine-key', required=True,
@@ -39,7 +43,7 @@ def check_no_milestone(redmine_project, gitlab_project):
     return len(gitlab_project.get_milestones()) == 0
 
 
-def main(args):
+def perform_migrate_issues(args):
     redmine = RedmineClient(args.redmine_key)
     gitlab = GitlabClient(args.gitlab_key)
 
@@ -81,6 +85,9 @@ def main(args):
             print('#{iid} {title}'.format(**created))
 
 
-if __name__ == '__main__':
+def main():
     args = parse_args()
-    main(args)
+    if args.subcommand == 'issues':
+        perform_migrate_issues(args)
+    elif args.subcommand == 'roadmap':
+        raise NotImplementedError('Not implemented yet')

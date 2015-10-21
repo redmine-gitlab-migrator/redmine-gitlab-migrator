@@ -60,9 +60,9 @@ Install it:
 
 You can then give it a check without touching anything:
 
-    migrate-redmine-to-gitlab --redmine-key xxxx --gitlab-key xxxx \
+    migrate-rg issues --redmine-key xxxx --gitlab-key xxxx \
       <redmine project url> <gitlab project url> --check
 
 Remove the `--check` to do perform migrations, or better, read:
 
-    migrate-redmine-to-gitlab --help
+    migrate-rg --help
