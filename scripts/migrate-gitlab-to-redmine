@@ -18,7 +18,7 @@ def parse_args():
                         help="Redmine administrator API key")
     parser.add_argument('--gitlab-key', required=True,
                         help="Gitlab administrator API key")
-    parser.add_argument('--check', required=True, action='store_true', default=False,
+    parser.add_argument('--check', required=False, action='store_true', default=False,
                         help="do not perform any action, just check everything is ready for migration")
     return parser.parse_args()
 
@@ -72,9 +72,13 @@ def main(args):
                    for i in issues)
 
     for data, meta in issues_data:
-        created = gitlab_project.create_issue(data, meta)
-        #created = {'iid': 42, 'title': 'TEST'}
-        print('#{iid} {title}'.format(**created))
+        if args.check:
+            print('Would create issue "{}" and {} notes.'.format(
+                data['title'],
+                len(meta['notes'])))
+        else:
+            created = gitlab_project.create_issue(data, meta)
+            print('#{iid} {title}'.format(**created))
 
 
 if __name__ == '__main__':

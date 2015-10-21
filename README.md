@@ -47,7 +47,6 @@ TODO
 - Keeps who closed
 - clarify body note (change API/test)
 - Do a script to migrate issue numbers (iid) using a sql connection
-- Make --check effective
 
 Let's go
 --------
