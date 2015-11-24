@@ -109,3 +109,24 @@ def convert_issue(redmine_issue, redmine_user_index, gitlab_user_index):
             assigned_to['id'], redmine_user_index, gitlab_user_index)
 
     return data, meta
+
+
+def convert_version(redmine_version):
+    """ Turns a redmine version into a gitlab milestone
+
+    Do not handle the issues linked to the milestone/version.
+    Note that redmine do not expose a due date in API.
+
+    :param redmine_version: a dict describing redmine-api-style version
+    :rtype: couple: dict, dict
+    :return: a dict describing gitlab-api-style milestone and another for meta
+    """
+    milestone = {
+        "title": redmine_version['name'],
+        "description": '{}\n\n*(from redmine: created on {})*'.format(
+            redmine_version['description'],
+            redmine_version['created_on'][:10])
+    }
+    must_close = redmine_version['status'] == 'closed'
+
+    return milestone, {'must_close': must_close}

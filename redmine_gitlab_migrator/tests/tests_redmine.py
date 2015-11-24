@@ -29,3 +29,9 @@ class RedmineTestCase(unittest.TestCase):
         self.assertEqual(len(project_1.get_participants()), 2)
         self.assertIn('@', project_1.get_participants()[0]['mail'])
         self.assertEqual(len(project_2.get_participants()), 0)
+
+    def test_get_versions(self):
+        project = RedmineProject(
+            'http://localhost:9000/projects/diaspora/diaspora-site',
+            self.client)
+        self.assertEqual(len(project.get_versions()), 2)

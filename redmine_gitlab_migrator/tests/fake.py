@@ -396,6 +396,11 @@ class FakeRedmineClient:
                         "name": "John Smith",
                         "id": 83
                     },
+                    "fixed_version": {
+                        "id": 66,
+                        "name": "v0.11"
+                    },
+
                     "priority": {
                         "name": "Normal",
                         "id": 4
@@ -415,6 +420,7 @@ class FakeRedmineClient:
                     "id": 1439
                 },
             ]
+
         else:
             raise ValueError('{} is unknown data test'.format(url))
 
@@ -460,6 +466,43 @@ class FakeRedmineClient:
                     "name": "Diaspora website",
                     "id": 196,
                 }
+            }
+
+        elif url.endswith('/projects/diaspora-site/versions.json'):
+
+            return {
+                'versions':
+                [
+                    {
+                        "id": 66,
+                        "project":
+                        {
+                            "id": 8,
+                            "name": "Diaspora Project Site"
+                        },
+                        "name": "v0.11",
+                        "description": "First-public version",
+                        "status": "open",
+                        "sharing": "none",
+                        "created_on": "2015-11-16T10:11:44Z",
+                        "updated_on": "2015-11-16T10:11:44Z"
+                    },
+                    {
+                        "id": 29,
+                        "project":
+                        {
+                            "id": 8,
+                            "name": "Diaspora Project Site"
+                        },
+                        "name": "v0.5",
+                        "description": "pre-alpha",
+                        "status": "closed",
+                        "sharing": "none",
+                        "created_on": "2015-04-14T07:53:25Z",
+                        "updated_on": "2015-04-20T10:18:15Z"
+                    }
+                ],
+                'total_count': 2,
             }
 
         elif url.endswith('/users/83.json'):

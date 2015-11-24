@@ -2,7 +2,7 @@ import unittest
 
 from .fake import JOHN, JACK, REDMINE_ISSUE_1439, REDMINE_ISSUE_1732
 from redmine_gitlab_migrator.converters import (
-    convert_issue, relations_to_string)
+    convert_issue, convert_version, relations_to_string)
 
 
 class ConvertorTestCase(unittest.TestCase):
@@ -70,6 +70,39 @@ class ConvertorTestCase(unittest.TestCase):
             'notes': [],
             'must_close': False
         })
+
+    def test_open_version(self):
+        redmine_version = {
+            "id": 66,
+            "project": {"id": 8, "name": "Diaspora Project Site"},
+            "name": "v0.11",
+            "description": "First public version",
+            "status": "open",
+            "sharing": "none",
+            "created_on": "2015-11-16T10:11:44Z",
+            "updated_on": "2015-11-16T10:11:44Z"
+        }
+        gitlab_milestone, meta = convert_version(redmine_version)
+        self.assertEqual(gitlab_milestone, {
+            "title": "v0.11",
+            "description": ("First public version\n\n*"
+                            "(from redmine: created on 2015-11-16)*"),
+        })
+        self.assertEqual(meta, {'must_close': False})
+
+    def test_closed_version(self):
+        redmine_version = {
+            "id": 66,
+            "project": {"id": 8, "name": "Diaspora Project Site"},
+            "name": "v0.11",
+            "description": "First public version",
+            "status": "closed",
+            "sharing": "none",
+            "created_on": "2015-11-16T10:11:44Z",
+            "updated_on": "2015-11-16T10:11:44Z"
+        }
+        gitlab_milestone, meta = convert_version(redmine_version)
+        self.assertEqual(meta, {'must_close': True})
 
     def test_relations_to_string(self):
         simple_oneway = {

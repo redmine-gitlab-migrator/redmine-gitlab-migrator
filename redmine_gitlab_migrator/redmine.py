@@ -93,3 +93,7 @@ class RedmineProject(Project):
         """ Returns dict index of users (by user id)
         """
         return {i['id']: i for i in self.get_participants()}
+
+    def get_versions(self):
+        response = self.api.get('{}/versions.json'.format(self.public_url))
+        return response['versions']
