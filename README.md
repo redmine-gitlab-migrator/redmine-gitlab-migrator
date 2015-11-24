@@ -35,6 +35,7 @@ Does not
 Requires
 --------
 
+- Python >= 3.4
 - Admin token on redmine
 - Admin token on gitlab
 - No preexisting issues on gitlab project
@@ -45,7 +46,7 @@ TODO
 ----
 
 - migration of roadmaps
-- Do a script to migrate issue numbers (iid) using a sql connection
+- migrate tags ?
 
 Let's go
 --------

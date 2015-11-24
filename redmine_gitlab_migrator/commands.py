@@ -1,12 +1,14 @@
 #!/bin/env python3
 import argparse
 import logging
+import re
 import sys
 
 from redmine_gitlab_migrator.redmine import RedmineProject, RedmineClient
 from redmine_gitlab_migrator.gitlab import GitlabProject, GitlabClient
 from redmine_gitlab_migrator.converters import convert_issue
 from redmine_gitlab_migrator.logging import setup_module_logging
+from redmine_gitlab_migrator import sql
 
 
 """Migration commands for issues and roadmaps from redmine to gitlab
@@ -18,7 +20,7 @@ log = logging.getLogger(__name__)
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("subcommand",
-                        choices=('issues', 'roadmap'),
+                        choices=('issues', 'roadmap', 'iid'),
                         help='subcommand')
     parser.add_argument('redmine_project_url')
     parser.add_argument('gitlab_project_url')
@@ -90,6 +92,49 @@ def perform_migrate_issues(args):
             log.info('#{iid} {title}'.format(**created))
 
 
+def perform_migrate_iid(args):
+    """ Shoud occur after the issues migration
+    """
+
+    gitlab = GitlabClient(args.gitlab_key)
+    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab)
+    gitlab_project_id = gitlab_project.get_id()
+
+    regex_saved_iid = r'-RM-([0-9]+)-MR-(.*)'
+
+    sql_cmd = sql.COUNT_UNMIGRATED_ISSUES.format(
+        regex=regex_saved_iid, project_id=gitlab_project_id)
+
+    output = sql.run_query(sql_cmd)
+
+    try:
+        m = re.match(r'\s*(\d+)\s*', output, re.DOTALL | re.MULTILINE)
+        issues_count = int(m.group(1))
+    except (AttributeError, ValueError):
+        raise ValueError(
+            'Invalid output from postgres command: "{}"'.format(output))
+
+    if issues_count > 0:
+        log.info('Ready to recover iid for {} issues.'.format(
+            issues_count))
+    else:
+        log.error(
+            "No issue to migrate iid, possible causes: "
+            "you already migrated iid or you haven't migrated issues yet.")
+        exit(1)
+
+    if not args.check:
+        sql_cmd = sql.MIGRATE_IID_ISSUES.format(
+            regex=regex_saved_iid, project_id=gitlab_project_id)
+        out = sql.run_query(sql_cmd)
+
+        try:
+            m = re.match(
+                r'\s*UPDATE\s+(\d+)\s*', output, re.DOTALL | re.MULTILINE)
+            migrated_count = int(m.group(1))
+            log.info('Migrated successfully iid for {} issues'.format(
+                migrated_count))
+
 def main():
     args = parse_args()
 
@@ -103,5 +148,7 @@ def main():
 
     if args.subcommand == 'issues':
         perform_migrate_issues(args)
+    elif args.subcommand == 'iid':
+        perform_migrate_iid(args)
     elif args.subcommand == 'roadmap':
         raise NotImplementedError('Not implemented yet')
