@@ -46,11 +46,10 @@ class ConvertorTestCase(unittest.TestCase):
         self.assertEqual(meta, {
             'sudo_user': JACK['username'],
             'notes': [
-                {
-                    'sudo': 'john_smith',
-                    'body': 'Appliqué par commit commit:66cbf9571ed501c6d38a5978f8a27e7b1aa35268.'
-                    '\n\n*(from redmine: written on 2015-09-09)*'
-                }
+                ({'body': 'Appliqué par commit '
+                  'commit:66cbf9571ed501c6d38a5978f8a27e7b1aa35268.'
+                  '\n\n*(from redmine: written on 2015-09-09)*'},
+                 {'sudo_user': 'john_smith'})
                 # empty notes should not be kept
             ],
             'must_close': True
