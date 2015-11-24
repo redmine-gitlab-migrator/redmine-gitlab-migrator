@@ -1,14 +1,18 @@
 #!/bin/env python3
 import argparse
+import logging
 import sys
 
 from redmine_gitlab_migrator.redmine import RedmineProject, RedmineClient
 from redmine_gitlab_migrator.gitlab import GitlabProject, GitlabClient
 from redmine_gitlab_migrator.converters import convert_issue
+from redmine_gitlab_migrator.logging import setup_module_logging
 
 
 """Migration commands for issues and roadmaps from redmine to gitlab
 """
+
+log = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -23,7 +27,10 @@ def parse_args():
     parser.add_argument('--gitlab-key', required=True,
                         help="Gitlab administrator API key")
     parser.add_argument('--check', required=False, action='store_true', default=False,
-                        help="do not perform any action, just check everything is ready for migration")
+                        help="do not perform any action, just check everything is ready for migration"),
+    parser.add_argument(
+        '--debug', required=False, action='store_true', default=False,
+        help="More output"),
     return parser.parse_args()
 
 
@@ -56,13 +63,11 @@ def perform_migrate_issues(args):
     redmine_users_index = redmine_project.get_users_index()
 
     def check(func, message):
-        sys.stdout.write('{}... '.format(message))
-        sys.stdout.flush()
         ret = func(redmine_project, gitlab_project)
         if ret:
-            print('OK')
+            log.info('{}... OK'.format(message))
         else:
-            print('FAILED')
+            log.error('{}... FAILED'.format(message))
             exit(1)
 
     check(check_users, 'Required users presence')
@@ -77,16 +82,25 @@ def perform_migrate_issues(args):
 
     for data, meta in issues_data:
         if args.check:
-            print('Would create issue "{}" and {} notes.'.format(
+            log.info('Would create issue "{}" and {} notes.'.format(
                 data['title'],
                 len(meta['notes'])))
         else:
             created = gitlab_project.create_issue(data, meta)
-            print('#{iid} {title}'.format(**created))
+            log.info('#{iid} {title}'.format(**created))
 
 
 def main():
     args = parse_args()
+
+    if args.debug:
+        loglevel = logging.DEBUG
+    else:
+        loglevel = logging.INFO
+
+    # Configure global logging
+    setup_module_logging('redmine_gitlab_migrator', level=loglevel)
+
     if args.subcommand == 'issues':
         perform_migrate_issues(args)
     elif args.subcommand == 'roadmap':
