@@ -100,18 +100,6 @@ def check_origin_milestone(redmine_project, gitlab_project):
     return len(redmine_project.get_versions()) > 0
 
 
-def check_project_uses_milestone(redmine_project, gitlab_project):
-    try:
-        redmine_project.get_versions()
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 404:
-            log.error(e)
-            return False
-        else:
-            raise
-    return True
-
-
 def perform_migrate_issues(args):
     redmine = RedmineClient(args.redmine_key)
     gitlab = GitlabClient(args.gitlab_key)
@@ -213,7 +201,6 @@ def perform_migrate_roadmap(args):
     gitlab_project = GitlabProject(args.gitlab_project_url, gitlab)
 
     checks = [
-        (check_project_uses_milestone, 'Redmine project roadmap is enabled'),
         (check_no_milestone, 'Gitlab project has no pre-existing milestone'),
         (check_origin_milestone, 'Redmine project contains versions'),
     ]
