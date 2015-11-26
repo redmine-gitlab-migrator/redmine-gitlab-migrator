@@ -14,7 +14,9 @@ Does
   - keep issue/notes authors
   - keep track of issue/notes original dates, but as comments
   - keeps relations (although gitlab model for relations is simpler)
-
+- Migration of Versions/Roadmaps
+  - contained issues
+  - status & due date
 
 Does not
 --------
@@ -23,14 +25,17 @@ Does not
   cannot be transposed 1-1 to gitlab ACL)
 - Migrate repositories (piece of cake to do by hand, + redmine allows multiple
   repositories per project where gitlab do not)
-- Migrate wikis (because we don't care for ourservelves)
-- Migrate globally (all projects), because namespacing is different in redmine and gitlab
+- Migrate wikis (because we don't care for ourservelves, feel free to contribute)
+- Migrate globally (all projects), because namespacing is different in redmine
+  and gitlab
 - Archive your redmine project
 - Keep creation/edit dates as metadata.
 - Keeps "watchers" on tickets (gitlab API v3 doe not expose it)
 - Keeps date/times as metadata
 - Keeps track of issue relations orientation
-- Remember who and when the issue was closed
+- Remember who closed the issue
+- Migrate tags ([redmine_tags](https://www.redmine.org/plugins/redmine_tags)
+  plugin), as they are not exposed in API
 
 Requires
 --------
@@ -40,19 +45,14 @@ Requires
 - Admin token on gitlab
 - No preexisting issues on gitlab project
 - Already synced users (those required in the project you are migrating)
-- Already existing repository
 
-TODO
-----
-
-- migration of roadmaps
-- migrate tags ?
 
 Let's go
 --------
 
 You can or can not use
-[virtualenvs](http://docs.python-guide.org/en/latest/dev/virtualenvs/), that's up to you.
+[virtualenvs](http://docs.python-guide.org/en/latest/dev/virtualenvs/), that's
+up to you.
 
 Install it:
 
