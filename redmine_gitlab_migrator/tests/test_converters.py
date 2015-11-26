@@ -64,6 +64,7 @@ class ConvertorTestCase(unittest.TestCase):
             'title': '-RM-1439-MR-Support SSL',
             'description': '\n\n*(from redmine: created on 2015-04-03, relates #1430)*',
             'labels': ['Evolution'],
+            'milestone': 'v0.11',
         })
         self.assertEqual(meta, {
             'sudo_user': JOHN['username'],

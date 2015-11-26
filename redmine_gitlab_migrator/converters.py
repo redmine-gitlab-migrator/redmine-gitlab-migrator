@@ -94,6 +94,10 @@ def convert_issue(redmine_issue, redmine_user_index, gitlab_user_index):
         'labels': [redmine_issue['tracker']['name']]
     }
 
+    version = redmine_issue.get('fixed_version', None)
+    if version:
+        data['milestone'] = version['name']
+
     author_login = redmine_uid_to_login(
         redmine_issue['author']['id'], redmine_user_index)
     meta = {
@@ -127,6 +131,9 @@ def convert_version(redmine_version):
             redmine_version['description'],
             redmine_version['created_on'][:10])
     }
+    if 'due_date' in redmine_version:
+        milestone['due_date'] = redmine_version['due_date'][:10]
+
     must_close = redmine_version['status'] == 'closed'
 
     return milestone, {'must_close': must_close}

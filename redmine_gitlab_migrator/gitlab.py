@@ -76,6 +76,24 @@ class GitlabProject(Project):
 
         return issue
 
+    def create_milestone(self, data, meta):
+        """ High-level milestone creation
+
+        :param meta: dict with "should_close"
+        :param data: dict formatted as the gitlab API expects it
+        :return: the created milestone
+        """
+        milestones_url = '{}/milestones'.format(self.api_url)
+        milestone = self.api.post(milestones_url, data=data)
+
+        if meta['must_close']:
+            milestone_url = '{}/{}'.format(milestones_url, milestone['id'])
+            altered_milestone = milestone.copy()
+            altered_milestone['state_event'] = 'close'
+
+            self.api.put(milestone_url, data=altered_milestone)
+        return milestone
+
     def get_issues(self):
         return self.api.get('{}/issues'.format(self.api_url))
 

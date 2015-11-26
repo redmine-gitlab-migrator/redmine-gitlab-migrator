@@ -4,9 +4,11 @@ import logging
 import re
 import sys
 
+import requests
+
 from redmine_gitlab_migrator.redmine import RedmineProject, RedmineClient
 from redmine_gitlab_migrator.gitlab import GitlabProject, GitlabClient
-from redmine_gitlab_migrator.converters import convert_issue
+from redmine_gitlab_migrator.converters import convert_issue, convert_version
 from redmine_gitlab_migrator.logging import setup_module_logging
 from redmine_gitlab_migrator import sql
 
@@ -43,6 +45,15 @@ def parse_args():
     return parser.parse_args()
 
 
+def check(func, message, redmine_project, gitlab_project):
+    ret = func(redmine_project, gitlab_project)
+    if ret:
+        log.info('{}... OK'.format(message))
+    else:
+        log.error('{}... FAILED'.format(message))
+        exit(1)
+
+
 def check_users(redmine_project, gitlab_project):
     users = redmine_project.get_participants()
     nicks = [i['login'] for i in users]
@@ -59,6 +70,22 @@ def check_no_milestone(redmine_project, gitlab_project):
     return len(gitlab_project.get_milestones()) == 0
 
 
+def check_origin_milestone(redmine_project, gitlab_project):
+    return len(redmine_project.get_versions()) > 0
+
+
+def check_project_uses_milestone(redmine_project, gitlab_project):
+    try:
+        redmine_project.get_versions()
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 404:
+            log.error(e)
+            return False
+        else:
+            raise
+    return True
+
+
 def perform_migrate_issues(args):
     redmine = RedmineClient(args.redmine_key)
     gitlab = GitlabClient(args.gitlab_key)
@@ -71,17 +98,14 @@ def perform_migrate_issues(args):
     gitlab_users_index = gitlab_instance.get_users_index()
     redmine_users_index = redmine_project.get_users_index()
 
-    def check(func, message):
-        ret = func(redmine_project, gitlab_project)
-        if ret:
-            log.info('{}... OK'.format(message))
-        else:
-            log.error('{}... FAILED'.format(message))
-            exit(1)
-
-    check(check_users, 'Required users presence')
-    check(check_no_issue, 'Project has no pre-existing issue')
-    check(check_no_milestone, 'Project has no pre-existing milestone')
+    checks = [
+        (check_users, 'Required users presence')
+        (check_no_issue, 'Project has no pre-existing issue')
+        (check_no_milestone, 'Project has no pre-existing milestone')
+    ]
+    for i in checks:
+        check(
+            *i, redmine_project=redmine_project, gitlab_project=gitlab_project)
 
     # Get issues
 
@@ -91,6 +115,15 @@ def perform_migrate_issues(args):
 
     for data, meta in issues_data:
         if args.check:
+            milestone = data.get('milestone', None)
+            if milestone:
+                try:
+                    gitlab_project.get_milestone_by_name(milestone)
+                except requests.exceptions.HTTPError:
+                    raise CommandError(
+                        "issue \"{}\" points to unknown milestone \"{}\. "
+                        "Check that you already migrated roadmaps")
+
             log.info('Would create issue "{}" and {} notes.'.format(
                 data['title'],
                 len(meta['notes'])))
@@ -141,6 +174,38 @@ def perform_migrate_iid(args):
             migrated_count = int(m.group(1))
             log.info('Migrated successfully iid for {} issues'.format(
                 migrated_count))
+        except (IndexError, AttributeError):
+            raise ValueError(
+                'Invalid output from postgres command: "{}"'.format(output))
+
+
+def perform_migrate_roadmap(args):
+    redmine = RedmineClient(args.redmine_key)
+    gitlab = GitlabClient(args.gitlab_key)
+
+    redmine_project = RedmineProject(args.redmine_project_url, redmine)
+    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab)
+
+    checks = [
+        (check_project_uses_milestone, 'Redmine project roadmap is enabled'),
+        (check_no_milestone, 'Gitlab project has no pre-existing milestone'),
+        (check_origin_milestone, 'Redmine project contains versions'),
+    ]
+    for i in checks:
+        check(
+            *i, redmine_project=redmine_project,
+            gitlab_project=gitlab_project)
+
+    versions = redmine_project.get_versions()
+    versions_data = (convert_version(i) for i in versions)
+
+    for data, meta in versions_data:
+        if args.check:
+            log.info("Would create version {}".format(data))
+        else:
+            created = gitlab_project.create_milestone(data, meta)
+            log.info("Version {}".format(created['title']))
+
 
 def main():
     args = parse_args()

@@ -149,7 +149,12 @@ REDMINE_ISSUE_1439 = {
             "relation_type": "relates",
             "delay": None
         }
-    ]
+    ],
+    "fixed_version": {
+        "id": 66,
+        "name": "v0.11"
+    },
+
 }
 
 
