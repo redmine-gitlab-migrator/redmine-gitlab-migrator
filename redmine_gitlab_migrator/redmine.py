@@ -36,6 +36,9 @@ class RedmineClient(APIClient):
         kwargs['params']['limit'] = self.PAGE_MAX_SIZE
 
         result_pages = [resp[res_list_key]]
+        if 'offset' not in resp:
+            raise ValueError('HTTP response data is not paginated')
+
         while (resp['total_count'] - resp['offset'] - resp['limit']) > 0:
             kwargs['offset'] = kwargs.get('offset', 0) + self.PAGE_MAX_SIZE
             resp = self.get(*args, **kwargs)
