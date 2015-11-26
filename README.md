@@ -66,3 +66,12 @@ You can then give it a check without touching anything:
 Remove the `--check` to do perform migrations, or better, read:
 
     migrate-rg --help
+
+Unit testing
+------------
+
+Use the standard way:
+
+    python setup.py test
+
+Or use whatever test runner you fancy.

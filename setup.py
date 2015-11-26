@@ -21,4 +21,5 @@ setup(
             'migrate-rg = redmine_gitlab_migrator.commands:main'
         ]
     },
+    test_suite='redmine_gitlab_migrator.tests',
 )
