@@ -17,6 +17,13 @@ from redmine_gitlab_migrator import sql
 log = logging.getLogger(__name__)
 
 
+class CommandError(Exception):
+    """ An error that will nicely pop up to user and stops program
+    """
+    def __init__(self, msg):
+        self.msg = msg
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("subcommand",
@@ -145,10 +152,14 @@ def main():
 
     # Configure global logging
     setup_module_logging('redmine_gitlab_migrator', level=loglevel)
+    try:
+        if args.subcommand == 'issues':
+            perform_migrate_issues(args)
+        elif args.subcommand == 'iid':
+            perform_migrate_iid(args)
+        elif args.subcommand == 'roadmap':
+            perform_migrate_roadmap(args)
 
-    if args.subcommand == 'issues':
-        perform_migrate_issues(args)
-    elif args.subcommand == 'iid':
-        perform_migrate_iid(args)
-    elif args.subcommand == 'roadmap':
-        raise NotImplementedError('Not implemented yet')
+    except CommandError as e:
+        log.error(e)
+        exit(12)
