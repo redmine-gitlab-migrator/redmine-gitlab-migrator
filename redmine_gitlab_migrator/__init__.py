@@ -1,4 +1,8 @@
+import logging
+
 import requests
+
+log = logging.getLogger(__name__)
 
 
 class APIClient:
@@ -19,26 +23,24 @@ class APIClient:
         _kwargs['headers'] = headers
         return _kwargs
 
-    def get(self, *args, **kwargs):
+    def _req(self, func, *args, **kwargs):
+        log.debug('HTTP REQUEST {} {} {}'.format(
+            func, args, kwargs))
         kwargs = self.add_auth_headers(kwargs)
-
-        resp = requests.get(*args, **kwargs)
+        resp = func(*args, **kwargs)
         resp.raise_for_status()
-        return resp.json()
+        ret = resp.json()
+        log.debug('HTTP RESPONSE {}'.format(ret))
+        return ret
+
+    def get(self, *args, **kwargs):
+        return self._req(requests.get, *args, **kwargs)
 
     def post(self, *args, **kwargs):
-        kwargs = self.add_auth_headers(kwargs)
-
-        resp = requests.post(*args, **kwargs)
-        resp.raise_for_status()
-        return resp.json()
+        return self._req(requests.post, *args, **kwargs)
 
     def put(self, *args, **kwargs):
-        kwargs = self.add_auth_headers(kwargs)
-
-        resp = requests.put(*args, **kwargs)
-        resp.raise_for_status()
-        return resp.json()
+        return self._req(requests.put, *args, **kwargs)
 
 
 class Project:
