@@ -28,20 +28,46 @@ class CommandError(Exception):
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("subcommand",
-                        choices=('issues', 'roadmap', 'iid'),
-                        help='subcommand')
-    parser.add_argument('redmine_project_url')
-    parser.add_argument('gitlab_project_url')
-    parser.add_argument('--redmine-key', required=True,
-                        help="Redmine administrator API key")
-    parser.add_argument('--gitlab-key', required=True,
-                        help="Gitlab administrator API key")
-    parser.add_argument('--check', required=False, action='store_true', default=False,
-                        help="do not perform any action, just check everything is ready for migration"),
-    parser.add_argument(
-        '--debug', required=False, action='store_true', default=False,
-        help="More output"),
+    parser.add_argument('command')
+
+    subparsers = parser.add_subparsers(dest='command')
+
+    parser_issues = subparsers.add_parser(
+        'issues', help=perform_migrate_issues.__doc__)
+    parser_issues.set_defaults(func=perform_migrate_issues)
+
+    parser_roadmap = subparsers.add_parser(
+        'roadmap', help=perform_migrate_roadmap.__doc__)
+    parser_roadmap.set_defaults(func=perform_migrate_roadmap)
+
+    parser_iid = subparsers.add_parser(
+        'iid', help=perform_migrate_iid.__doc__)
+    parser_iid.set_defaults(func=perform_migrate_iid)
+
+    for i in (parser_issues, parser_roadmap):
+        i.add_argument('redmine_project_url')
+        i.add_argument(
+            '--redmine-key',
+            required=True,
+            help="Redmine administrator API key")
+
+    for i in (parser_issues, parser_roadmap, parser_iid):
+        i.add_argument('gitlab_project_url')
+        i.add_argument(
+            '--gitlab-key',
+            required=True,
+            help="Gitlab administrator API key")
+
+        i.add_argument(
+            '--check',
+            required=False, action='store_true', default=False,
+            help="do not perform any action, just check everything is ready")
+
+        i.add_argument(
+            '--debug',
+            required=False, action='store_true', default=False,
+            help="More output")
+
     return parser.parse_args()
 
 
@@ -210,21 +236,17 @@ def perform_migrate_roadmap(args):
 def main():
     args = parse_args()
 
-    if args.debug:
-        loglevel = logging.DEBUG
-    else:
-        loglevel = logging.INFO
+    if hasattr(args, 'func'):
+        if args.debug:
+            loglevel = logging.DEBUG
+        else:
+            loglevel = logging.INFO
 
-    # Configure global logging
-    setup_module_logging('redmine_gitlab_migrator', level=loglevel)
-    try:
-        if args.subcommand == 'issues':
-            perform_migrate_issues(args)
-        elif args.subcommand == 'iid':
-            perform_migrate_iid(args)
-        elif args.subcommand == 'roadmap':
-            perform_migrate_roadmap(args)
+        # Configure global logging
+        setup_module_logging('redmine_gitlab_migrator', level=loglevel)
+        try:
+            args.func(args)
 
-    except CommandError as e:
-        log.error(e)
-        exit(12)
+        except CommandError as e:
+            log.error(e)
+            exit(12)
