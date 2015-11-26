@@ -4,8 +4,6 @@ import logging
 import re
 import sys
 
-import requests
-
 from redmine_gitlab_migrator.redmine import RedmineProject, RedmineClient
 from redmine_gitlab_migrator.gitlab import GitlabProject, GitlabClient
 from redmine_gitlab_migrator.converters import convert_issue, convert_version
@@ -28,7 +26,6 @@ class CommandError(Exception):
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command')
 
     subparsers = parser.add_subparsers(dest='command')
 
@@ -113,9 +110,8 @@ def perform_migrate_issues(args):
     redmine_users_index = redmine_project.get_users_index()
 
     checks = [
-        (check_users, 'Required users presence')
-        (check_no_issue, 'Project has no pre-existing issue')
-        (check_no_milestone, 'Project has no pre-existing milestone')
+        (check_users, 'Required users presence'),
+        (check_no_issue, 'Project has no pre-existing issue'),
     ]
     for i in checks:
         check(
@@ -188,7 +184,8 @@ def perform_migrate_iid(args):
 
         try:
             m = re.match(
-                r'\s*UPDATE\s+(\d+)\s*', output, re.DOTALL | re.MULTILINE)
+                r'\s*(\d+)\s*', output,
+                re.DOTALL | re.MULTILINE)
             migrated_count = int(m.group(1))
             log.info('Migrated successfully iid for {} issues'.format(
                 migrated_count))
