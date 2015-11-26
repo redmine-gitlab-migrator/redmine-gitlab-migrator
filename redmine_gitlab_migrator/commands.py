@@ -124,19 +124,23 @@ def perform_migrate_issues(args):
     # Get issues
 
     issues = redmine_project.get_all_issues()
-    issues_data = (convert_issue(i, redmine_users_index, gitlab_users_index)
-                   for i in issues)
+    milestones_index = gitlab_project.get_milestones_index()
+    issues_data = (
+        convert_issue(
+            i, redmine_users_index, gitlab_users_index, milestones_index)
+        for i in issues)
 
     for data, meta in issues_data:
         if args.check:
-            milestone = data.get('milestone', None)
-            if milestone:
+            milestone_id = data.get('milestone_id', None)
+            if milestone_id:
                 try:
-                    gitlab_project.get_milestone_by_name(milestone)
-                except requests.exceptions.HTTPError:
+                    gitlab_project.get_milestone_by_id(milestone_id)
+                except ValueError:
                     raise CommandError(
-                        "issue \"{}\" points to unknown milestone \"{}\. "
-                        "Check that you already migrated roadmaps")
+                        "issue \"{}\" points to unknown milestone_id \"{}\". "
+                        "Check that you already migrated roadmaps".format(
+                            data['title'], milestone_id))
 
             log.info('Would create issue "{}" and {} notes.'.format(
                 data['title'],

@@ -101,7 +101,20 @@ class GitlabProject(Project):
         return self.api.get('{}/members'.format(self.api_url))
 
     def get_milestones(self):
-        return self.api.get('{}/milestones'.format(self.api_url))
+        if not hasattr(self, '_cache_milestones'):
+            self._cache_milestones = self.api.get(
+                '{}/milestones'.format(self.api_url))
+        return self._cache_milestones
+
+    def get_milestones_index(self):
+        return {i['title']: i for i in self.get_milestones()}
+
+    def get_milestone_by_id(self, _id):
+        milestones = self.get_milestones()
+        for i in milestones:
+            if i['id'] == _id:
+                return i
+        raise ValueError('Could not get milestone')
 
     def has_members(self, usernames):
         gitlab_user_names = set([i['username'] for i in self.get_members()])

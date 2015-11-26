@@ -68,7 +68,8 @@ def relations_to_string(relations, issue_id):
 
 # Convertor
 
-def convert_issue(redmine_issue, redmine_user_index, gitlab_user_index):
+def convert_issue(redmine_issue, redmine_user_index, gitlab_user_index,
+                  gitlab_milestones_index):
     if redmine_issue.get('closed_on', None):
         # quick'n dirty extract date
         close_text = ', closed on {}'.format(redmine_issue['closed_on'][:10])
@@ -96,7 +97,7 @@ def convert_issue(redmine_issue, redmine_user_index, gitlab_user_index):
 
     version = redmine_issue.get('fixed_version', None)
     if version:
-        data['milestone'] = version['name']
+        data['milestone_id'] = gitlab_milestones_index[version['name']]['id']
 
     author_login = redmine_uid_to_login(
         redmine_issue['author']['id'], redmine_user_index)
@@ -111,7 +112,6 @@ def convert_issue(redmine_issue, redmine_user_index, gitlab_user_index):
     if assigned_to is not None:
         data['assignee_id'] = redmine_uid_to_gitlab_uid(
             assigned_to['id'], redmine_user_index, gitlab_user_index)
-
     return data, meta
 
 

@@ -36,7 +36,7 @@ class ConvertorTestCase(unittest.TestCase):
     def test_closed_issue(self):
         redmine_issue = REDMINE_ISSUE_1732
         gitlab_issue, meta = convert_issue(
-            redmine_issue, self.redmine_user_index, self.gitlab_users_idx)
+            redmine_issue, self.redmine_user_index, self.gitlab_users_idx, {})
         self.assertEqual(gitlab_issue, {
             'title': '-RM-1732-MR-Update doc for v1',
             'description': 'The doc is a bit old\n\n*(from redmine: created on 2015-08-21, closed on 2015-09-09)*',
@@ -57,14 +57,16 @@ class ConvertorTestCase(unittest.TestCase):
 
     def test_open_issue(self):
         redmine_issue = REDMINE_ISSUE_1439
+        milestone_index = {'v0.11': {'id': 3, 'title': 'v0.11'}}
         gitlab_issue, meta = convert_issue(
-            redmine_issue, self.redmine_user_index, self.gitlab_users_idx)
+            redmine_issue, self.redmine_user_index, self.gitlab_users_idx,
+            milestone_index)
 
         self.assertEqual(gitlab_issue, {
             'title': '-RM-1439-MR-Support SSL',
             'description': '\n\n*(from redmine: created on 2015-04-03, relates #1430)*',
             'labels': ['Evolution'],
-            'milestone': 'v0.11',
+            'milestone_id': 3,
         })
         self.assertEqual(meta, {
             'sudo_user': JOHN['username'],
