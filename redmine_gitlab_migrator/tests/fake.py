@@ -337,10 +337,10 @@ class FakeGitlabClient:
 
 class FakeRedmineClient:
     def unpaginated_get(self, url):
-        if '/projects/brightbox/puppet/issues.json' in url:
+        if '/projects/puppet/issues.json' in url:
             return []
 
-        elif '/projects/diaspora/diaspora-site/issues.json' in url:
+        elif '/projects/diaspora-site/issues.json' in url:
             return [
                 {
                     "closed_on": "2015-09-09T15:54:49Z",
@@ -425,7 +425,7 @@ class FakeRedmineClient:
             raise ValueError('{} is unknown data test'.format(url))
 
     def get(self, url):
-        if url.endswith('project/brightbox/puppet.json'):
+        if url.endswith('projects/brightbox/puppet.json'):
             return {
                 "project": {
                     "updated_on": "2015-06-11T09:21:13Z",
@@ -449,7 +449,7 @@ class FakeRedmineClient:
         elif '/issues/1439.json' in url:
             return REDMINE_ISSUE_1439
 
-        elif url.endswith('/project/diaspora/diaspora-site.json'):
+        elif url.endswith('/projects/diaspora-site.json'):
             return {
                 "project": {
                     "updated_on": "2015-06-11T09:20:05Z",

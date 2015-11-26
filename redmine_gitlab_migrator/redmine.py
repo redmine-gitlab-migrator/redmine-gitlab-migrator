@@ -46,12 +46,32 @@ class RedmineClient(APIClient):
 
 class RedmineProject(Project):
     REGEX_PROJECT_URL = re.compile(
-        r'^(?P<base_url>https?://.*)/projects.*/(?P<project_name>[\w_-]+)$')
+        r'^(?P<base_url>https?://.*)/projects/(?P<project_name>[\w_-]+)$')
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    REGEX_CATEGORY_PROJECT_URL = re.compile(
+        r'^(?P<base_url>https?://.*)/project/(?P<category_name>[\w_-]+)/(?P<project_name>[\w_-]+)/?$')
+
+    def __init__(self, url, *args, **kwargs):
+        normalized_url = self._canonicalize_url(url)
+        super().__init__(normalized_url, *args, **kwargs)
         self.api_url = '{}.json'.format(self.public_url)
         self.instance_url = self._url_match.group('base_url')
+
+    @classmethod
+    def _canonicalize_url(cls, url):
+        """ If using caterogies, return the category-less URL
+
+        eg:
+          - category URL: https://example.com/project/dev/foobar/
+          - category-less URL: https://example.com/projects/foobar/
+
+        API endpoints are reachable only for category-less URLs.
+        """
+        m = cls.REGEX_CATEGORY_PROJECT_URL.match(url)
+        if m:
+            return '{base_url}/projects/{project_name}'.format(**m.groupdict())
+        else:
+            return url
 
     def get_all_issues(self):
         issues = self.api.unpaginated_get(
