@@ -23,6 +23,9 @@ class RedmineClient(APIClient):
     def unpaginated_get(self, *args, **kwargs):
         """ Iterates over API pagination for a given resource list
         """
+        kwargs['params'] = kwargs.get('params', {})
+        kwargs['params']['limit'] = self.PAGE_MAX_SIZE
+
         resp = self.get(*args, **kwargs)
 
         # Try to autofind the top-level key containing
@@ -32,18 +35,15 @@ class RedmineClient(APIClient):
         assert len(keys_candidates) == 1
         res_list_key = list(keys_candidates)[0]
 
-        kwargs['params'] = kwargs.get('params', {})
-        kwargs['params']['limit'] = self.PAGE_MAX_SIZE
-
         result_pages = [resp[res_list_key]]
         if 'offset' not in resp:
             raise ValueError('HTTP response data is not paginated')
 
         while (resp['total_count'] - resp['offset'] - resp['limit']) > 0:
-            kwargs['offset'] = kwargs.get('offset', 0) + self.PAGE_MAX_SIZE
+            kwargs['params']['offset'] = (kwargs['params'].get('offset', 0)
+                                          + self.PAGE_MAX_SIZE)
             resp = self.get(*args, **kwargs)
             result_pages.append(resp[res_list_key])
-
         return chain.from_iterable(result_pages)
 
 
