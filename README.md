@@ -63,9 +63,73 @@ You can then give it a check without touching anything:
     migrate-rg issues --redmine-key xxxx --gitlab-key xxxx \
       <redmine project url> <gitlab project url> --check
 
-Remove the `--check` to do perform migrations, or better, read:
+The `--check` here prevents to writing anything, it's available on all
+commands.
 
     migrate-rg --help
+
+Migration process
+-----------------
+
+This process is for each project, **order matters**.
+
+### Create the gitlab project
+
+It doesn't neet to be named the same, you just have to record it's URL (eg:
+*https://git.example.com/mygroup/myproject*).
+
+### Create users
+
+By-hand operation, project members in gitlab need to have same username as
+members in redmine. Every member that interacted with the redmine project
+should be added to the gitlab project.
+
+### Migrate Roadmap
+
+If you do use roadmap, redmine *versions* will be converted to gitlab
+*milestones*. If you don't, just skip this step.
+
+    migrate-rg roadmap --redmine-key xxxx --gitlab-key xxxx \
+      https://redmine.example.com/projects/myproject \
+      http://git.example.com/mygroup/myproject --check
+
+*(remove `--check` to perform it for real, same applies for other commands)*
+
+### Migrate issues
+
+    migrate-rg issues --redmine-key xxxx --gitlab-key xxxx \
+      https://redmine.example.com/projects/myproject \
+      http://git.example.com/mygroup/myproject --check
+
+Note that your issue titles will be anotated with the original redmine issue
+ID, like *-RM-1186-MR-logging*. This anotation will be used (and removed) by
+next step.
+
+### Migrate Issues ID (iid)
+
+You can retain the issues ID from redmine, **this cannot be done via REST
+API**, thus it requires **direct access to the gitlab machine**.
+
+So you have to log in the gitlab machine (eg. via SSH), and then issue the
+commad with sufficient rights, from there:
+
+    migrate-rg iid --redmine --redmine-key xxxx --gitlab-key xxxx \
+      https://redmine.example.com/projects/myproject \
+      http://git.example.com/mygroup/myproject --check
+
+
+### Import git repository
+
+A bare matter of `git remote set-url && git push`, see git documentation.
+
+Note that gitlab do not support multiple repositories per project, you'll have
+to reorganize your stuff if you were using that feature of Redmine.
+
+### Archive redmine project
+
+If you want to.
+
+You're good to go :).
 
 Unit testing
 ------------
