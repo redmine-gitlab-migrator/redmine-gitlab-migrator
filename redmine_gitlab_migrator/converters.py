@@ -1,7 +1,10 @@
 """ Convert Redmine objects to gitlab's
 """
 
-import sys
+import logging
+
+
+log = logging.getLogger(__name__)
 
 # Utils
 
@@ -39,7 +42,7 @@ def convert_notes(redmine_issue_journals, redmine_user_index):
             except KeyError:
                 # In some cases you have anonymous notes, which do not exist in
                 # gitlab.
-                sys.stderr.write(
+                log.warning(
                     'Redmine user {} is unknown, attribute note '
                     'to current admin\n'.format(entry['user']))
                 author = None
