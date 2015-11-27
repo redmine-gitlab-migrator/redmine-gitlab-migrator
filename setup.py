@@ -8,7 +8,7 @@ README = open(os.path.join(os.path.dirname(__file__), 'README.md')).read()
 
 setup(
     name='migrate-redmine-to-gitlab',
-    version='0.1',
+    version='1.0',
     description='Migrate a redmine project to gitlab',
     long_description=README,
     author='Jocelyn Delalande',
