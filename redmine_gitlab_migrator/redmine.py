@@ -3,6 +3,7 @@ import re
 
 from . import APIClient, Project
 
+ANONYMOUS_USER_ID = 2
 
 class RedmineClient(APIClient):
     PAGE_MAX_SIZE = 100
@@ -108,8 +109,10 @@ class RedmineProject(Project):
                 user_ids.add(i['id'])
 
         for i in user_ids:
-            users.append(self.api.get('{}/users/{}.json'.format(
-                self.instance_url, i)))
+            # The anonymous user is not really part of the project...
+            if i != ANONYMOUS_USER_ID:
+                users.append(self.api.get('{}/users/{}.json'.format(
+                    self.instance_url, i)))
         return users
 
     def get_users_index(self):
