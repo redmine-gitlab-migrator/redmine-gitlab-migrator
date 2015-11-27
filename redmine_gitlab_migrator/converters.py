@@ -101,6 +101,13 @@ def convert_issue(redmine_issue, redmine_user_index, gitlab_user_index,
 
     author_login = redmine_uid_to_login(
         redmine_issue['author']['id'], redmine_user_index)
+
+    if author_login == '':
+        log.warning(
+            'Redmine issue #{} is anonymous, gitlab issue is attributed '
+            'to current admin\n'.format(redmine_issue['id']))
+        author_login = None
+
     meta = {
         'sudo_user': author_login,
         'notes': list(convert_notes(redmine_issue['journals'],

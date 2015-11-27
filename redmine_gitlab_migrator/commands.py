@@ -79,8 +79,9 @@ def check(func, message, redmine_project, gitlab_project):
 
 def check_users(redmine_project, gitlab_project):
     users = redmine_project.get_participants()
-    nicks = [i['login'] for i in users]
-    sys.stdout.write(', '.join(nicks)+ ' ')
+    # Filter out anonymous user
+    nicks = [i['login'] for i in users if i['login'] != '']
+    log.info('Project users are: {}'.format(', '.join(nicks) + ' '))
 
     return gitlab_project.get_instance().check_users_exist(nicks)
 
