@@ -1,5 +1,7 @@
-Redmine to gitlab migrator
+Redmine to Gitlab migrator
 ==========================
+
+Migrate code projects from Redmine to Gitlab, keeping issues/milestones/metadata
 
 *Note: although certainly not bugfree, this tool has been used at @oasiswork
  to migrate 30+ projects with 1000+ issues, and some attention is paid to
@@ -12,7 +14,8 @@ Does
 - migration of issues, keeping as much metadata as possible
   - your trackers become tags
   - issue comments are kept and assigned to the right users
-  - issue final status (open/closed) is kept (not status history)
+  - issue final status (open/closed) is kept along with open/close date (not
+    detailed status history)
   - issues assignations are kept
   - keep issues numbers (ex: `#123`)
   - keep issue/notes authors
@@ -25,18 +28,18 @@ Does
 Does not
 --------
 
-- Migrate users and groups, and permissions (redmine ACL model is complex and
+- Migrate users, groups, and permissions (redmine ACL model is complex and
   cannot be transposed 1-1 to gitlab ACL)
 - Migrate repositories (piece of cake to do by hand, + redmine allows multiple
   repositories per project where gitlab do not)
-- Migrate wikis (because we don't care for ourservelves, feel free to contribute)
-- Migrate globally (all projects), because namespacing is different in redmine
-  and gitlab
-- Archive your redmine project
-- Keep creation/edit dates as metadata.
-- Keeps "watchers" on tickets (gitlab API v3 doe not expose it)
-- Keeps date/times as metadata
-- Keeps track of issue relations orientation
+- Migrate wikis (because we don't use them at @oasiswork, feel free to contribute)
+- Migrate the whole redmine installation , because namespacing is different in
+  redmine and gitlab
+- Archive the redmine project for you
+- Keep creation/edit dates as metadata
+- Keep "watchers" on tickets (gitlab API v3 doe not expose it)
+- Keep date/times as metadata
+- Keep track of issue relations orientation (not such notion on gitlab)
 - Remember who closed the issue
 - Migrate tags ([redmine_tags](https://www.redmine.org/plugins/redmine_tags)
   plugin), as they are not exposed in API
