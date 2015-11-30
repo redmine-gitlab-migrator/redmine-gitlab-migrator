@@ -11,19 +11,19 @@ Does
 ----
 
 - Per-project migrations
-- migration of issues, keeping as much metadata as possible
-  - your trackers become tags
-  - issue comments are kept and assigned to the right users
-  - issue final status (open/closed) is kept along with open/close date (not
+- Migration of issues, keeping as much metadata as possible:
+  - redmine trackers become tags
+  - issues comments are kept and assigned to the right users
+  - issues final status (open/closed) are kept along with open/close date (not
     detailed status history)
-  - issues assignations are kept
-  - keep issues numbers (ex: `#123`)
-  - keep issue/notes authors
-  - keep track of issue/notes original dates, but as comments
-  - keeps relations (although gitlab model for relations is simpler)
-- Migration of Versions/Roadmaps
-  - contained issues
-  - status & due date
+  - issues assignments are kept
+  - issues numbers (ex: `#123`)
+  - issues/notes authors
+  - issue/notes original dates, but as comments
+  - relations (although gitlab model for relations is simpler)
+- Migration of Versions/Roadmaps keeping:
+  - issues composing the version
+  - statuses & due dates
 
 Does not
 --------
@@ -31,18 +31,18 @@ Does not
 - Migrate users, groups, and permissions (redmine ACL model is complex and
   cannot be transposed 1-1 to gitlab ACL)
 - Migrate repositories (piece of cake to do by hand, + redmine allows multiple
-  repositories per project where gitlab do not)
+  repositories per project where gitlab does not)
 - Migrate wikis (because we don't use them at @oasiswork, feel free to contribute)
-- Migrate the whole redmine installation , because namespacing is different in
+- Migrate the whole redmine installation at once, because namespacing is different in
   redmine and gitlab
 - Archive the redmine project for you
 - Keep creation/edit dates as metadata
-- Keep "watchers" on tickets (gitlab API v3 doe not expose it)
-- Keep date/times as metadata
-- Keep track of issue relations orientation (not such notion on gitlab)
+- Keep "watchers" on tickets (gitlab API v3 does not expose it)
+- Keep dates/times as metadata
+- Keep track of issue relations orientation (no such notion on gitlab)
 - Remember who closed the issue
 - Migrate tags ([redmine_tags](https://www.redmine.org/plugins/redmine_tags)
-  plugin), as they are not exposed in API
+  plugin), as they are not exposed in gitlab API
 
 Requires
 --------
@@ -87,13 +87,15 @@ It doesn't neet to be named the same, you just have to record it's URL (eg:
 
 ### Create users
 
-By-hand operation, project members in gitlab need to have same username as
+Manual operation, project members in gitlab need to have the same username as
 members in redmine. Every member that interacted with the redmine project
-should be added to the gitlab project.
+should be added to the gitlab project.  
+If a corresponding user can't be found in gitlab, the issue/comment will be
+assigned to the gitlab admin user.
 
 ### Migrate Roadmap
 
-If you do use roadmap, redmine *versions* will be converted to gitlab
+If you do use roadmaps, redmine *versions* will be converted to gitlab
 *milestones*. If you don't, just skip this step.
 
     migrate-rg roadmap --redmine-key xxxx --gitlab-key xxxx \
@@ -108,9 +110,9 @@ If you do use roadmap, redmine *versions* will be converted to gitlab
       https://redmine.example.com/projects/myproject \
       http://git.example.com/mygroup/myproject --check
 
-Note that your issue titles will be anotated with the original redmine issue
-ID, like *-RM-1186-MR-logging*. This anotation will be used (and removed) by
-next step.
+Note that your issue titles will be annotated with the original redmine issue
+ID, like *-RM-1186-MR-logging*. This annotation will be used (and removed) by
+the next step.
 
 ### Migrate Issues ID (iid)
 
@@ -129,8 +131,8 @@ commad with sufficient rights, from there:
 
 A bare matter of `git remote set-url && git push`, see git documentation.
 
-Note that gitlab do not support multiple repositories per project, you'll have
-to reorganize your stuff if you were using that feature of Redmine.
+Note that gitlab does not support multiple repositories per project, you'll have
+to reorganize your projects if you were using that feature of Redmine.
 
 ### Archive redmine project
 
