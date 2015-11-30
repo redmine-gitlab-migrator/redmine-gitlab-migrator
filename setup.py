@@ -4,11 +4,14 @@ from __future__ import unicode_literals
 import os
 from setuptools import setup
 
-README = open(os.path.join(os.path.dirname(__file__), 'README.md')).read()
+try:
+    README = open(os.path.join(os.path.dirname(__file__), 'README.md')).read()
+except IOError:
+    README = ''
 
 setup(
     name='redmine-gitlab-migrator',
-    version='1.0.1',
+    version='1.0.2',
     description='Migrate a redmine project to gitlab',
     long_description=README,
     author='Jocelyn Delalande',
