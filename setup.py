@@ -13,6 +13,7 @@ setup(
     long_description=README,
     author='Jocelyn Delalande',
     author_email='jdelalande@oasiswork.fr',
+    license='GPL',
     url='https://github/oasiswork/migrate-redmine-to-gitlab/',
     packages=['redmine_gitlab_migrator'],
     install_requires=['requests'],
@@ -22,4 +23,7 @@ setup(
         ]
     },
     test_suite='redmine_gitlab_migrator.tests',
+    classifiers=[
+        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)'
+    ]
 )
