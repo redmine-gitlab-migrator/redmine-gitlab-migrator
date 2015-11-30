@@ -50,10 +50,14 @@ Requires
 --------
 
 - Python >= 3.4
+- gitlab >= 7.0
+- redmine >= 1.3
 - Admin token on redmine
 - Admin token on gitlab
 - No preexisting issues on gitlab project
 - Already synced users (those required in the project you are migrating)
+
+(It was developed/tested arround redmine 2.5.2, gitlab 8.2.0, python 3.4)
 
 
 Let's go
@@ -65,14 +69,17 @@ up to you.
 
 Install it:
 
-    ./setup.py install
+    pip install redmine-gitlab-migrator
+
+
+(or if you cloned the git: `python setup.py install`)
 
 You can then give it a check without touching anything:
 
     migrate-rg issues --redmine-key xxxx --gitlab-key xxxx \
       <redmine project url> <gitlab project url> --check
 
-The `--check` here prevents to writing anything, it's available on all
+The `--check` here prevents any writing , it's available on all
 commands.
 
     migrate-rg --help
@@ -91,7 +98,7 @@ It doesn't neet to be named the same, you just have to record it's URL (eg:
 
 Manual operation, project members in gitlab need to have the same username as
 members in redmine. Every member that interacted with the redmine project
-should be added to the gitlab project.  
+should be added to the gitlab project.
 If a corresponding user can't be found in gitlab, the issue/comment will be
 assigned to the gitlab admin user.
 
