@@ -1,6 +1,10 @@
 Redmine to gitlab migrator
 ==========================
 
+*Note: although certainly not bugfree, this tool has been used at @oasiswork
+ to migrate 30+ projects with 1000+ issues, and some attention is paid to
+ keeping data.*
+
 Does
 ----
 
