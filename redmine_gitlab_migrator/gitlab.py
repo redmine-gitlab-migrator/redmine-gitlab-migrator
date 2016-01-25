@@ -119,7 +119,7 @@ class GitlabProject(Project):
         return milestone
 
     def get_issues(self):
-		return self.api.get('{}/project/{}/issues'.format(self.instance_url, self.project_id))
+        return self.api.get('{}/project/{}/issues'.format(self.instance_url, self.project_id))
         #return self.api.get('{}/issues'.format(self.api_url))
 
     def get_members(self):
