@@ -54,6 +54,17 @@ class GitlabProject(Project):
         self.instance_url = '{}/api/v3'.format(
             self._url_match.group('base_url'))
 
+        projects_info = self.api.get('{}/projects'.format(self.instance_url))
+
+        projectId = -1
+        for project_attributes in projects_info:
+            if project_attributes.get('name') == self.project_name :
+                projectId = project_attributes.get('id')
+
+        self.project_id = projectId
+        if projectId == -1 :
+            sys.exit()
+
     def is_repository_empty(self):
         """ Heuristic to check if repository is empty
         """
@@ -66,7 +77,8 @@ class GitlabProject(Project):
         :param data: dict formatted as the gitlab API expects it
         :return: the created issue (without notes)
         """
-        issues_url = '{}/issues'.format(self.api_url)
+        issues_url = '{}/projects/{}/issues'.format(self.instance_url, self.project_id)
+#        issues_url = '{}/issues'.format(self.api_url)
         issue = self.api.post(
             issues_url, data=data, headers={'SUDO': meta['sudo_user']})
 
@@ -106,7 +118,8 @@ class GitlabProject(Project):
         return milestone
 
     def get_issues(self):
-        return self.api.get('{}/issues'.format(self.api_url))
+		return self.api.get('{}/project/{}/issues'.format(self.instance_url, self.project_id))
+        #return self.api.get('{}/issues'.format(self.api_url))
 
     def get_members(self):
         return self.api.get('{}/members'.format(self.api_url))
