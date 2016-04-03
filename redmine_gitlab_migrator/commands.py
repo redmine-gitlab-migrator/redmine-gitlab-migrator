@@ -8,7 +8,7 @@ from redmine_gitlab_migrator.redmine import RedmineProject, RedmineClient
 from redmine_gitlab_migrator.gitlab import GitlabProject, GitlabClient
 from redmine_gitlab_migrator.converters import convert_issue, convert_version, load_user_dict
 from redmine_gitlab_migrator.logger import setup_module_logging
-from redmine_gitlab_migrator.wiki import TextileConverter
+from redmine_gitlab_migrator.wiki import TextileConverter, WikiPageConverter
 from redmine_gitlab_migrator import sql
 
 
@@ -33,6 +33,10 @@ def parse_args():
         'issues', help=perform_migrate_issues.__doc__)
     parser_issues.set_defaults(func=perform_migrate_issues)
 
+    parser_pages = subparsers.add_parser(
+        'pages', help=perform_migrate_pages.__doc__)
+    parser_pages.set_defaults(func=perform_migrate_pages)
+
     parser_roadmap = subparsers.add_parser(
         'roadmap', help=perform_migrate_roadmap.__doc__)
     parser_roadmap.set_defaults(func=perform_migrate_roadmap)
@@ -45,7 +49,7 @@ def parse_args():
         'iid', help=perform_migrate_iid.__doc__)
     parser_iid.set_defaults(func=perform_migrate_iid)
 
-    for i in (parser_issues, parser_roadmap, parser_redirect):
+    for i in (parser_issues, parser_pages, parser_roadmap, parser_redirect):
         i.add_argument('redmine_project_url')
         i.add_argument(
             '--redmine-key',
@@ -59,6 +63,7 @@ def parse_args():
             required=True,
             help="Gitlab administrator API key")
 
+    for i in (parser_issues, parser_pages, parser_roadmap, parser_iid, parser_redirect):
         i.add_argument(
             '--check',
             required=False, action='store_true', default=False,
@@ -99,6 +104,17 @@ def parse_args():
         required=False, action='store_true', default=False,
         help="create and delete empty issues for gaps, useful when no ssh is possible (e.g. gitlab.com)")
 
+    parser_pages.add_argument(
+        '--gitlab-wiki',
+        required=True,
+        help="Path to local cloned copy of the GitLab Wiki's git repository")
+
+    parser_pages.add_argument(
+        '--no-history',
+        action='store_true',
+        default=False,
+        help="do not convert the history")
+
     return parser.parse_args()
 
 
@@ -138,6 +154,30 @@ def check_no_issue(redmine_project, gitlab_project):
 def check_origin_milestone(redmine_project, gitlab_project):
     return len(redmine_project.get_versions()) > 0
 
+def perform_migrate_pages(args):
+    redmine = RedmineClient(args.redmine_key)
+    redmine_project = RedmineProject(args.redmine_project_url, redmine)
+
+    # Get copy of GitLab wiki repository
+    wiki = WikiPageConverter(args.gitlab_wiki)
+
+    # convert all pages including history
+    pages = []
+    for page in redmine_project.get_all_pages():
+        print("Collecting " + page["title"])
+        start_version = page["version"] if args.no_history else 1
+        for version in range(start_version, page["version"]+1):
+            try:
+                full_page = redmine_project.get_page(page["title"], version)
+                pages.append(full_page)
+            except:
+                log.error("Error when retrieving " + page["title"] + ", version " + str(version))
+
+    # sort everything by date and convert
+    pages.sort(key=lambda page: page["updated_on"])
+
+    for page in pages:
+        wiki.convert(page)
 
 def perform_migrate_issues(args):
     closed_states = []
@@ -223,7 +263,7 @@ def perform_migrate_issues(args):
                 raise
 
 def perform_migrate_iid(args):
-    """ Shoud occur after the issues migration
+    """ Should occur after the issues migration
     """
 
     # access gitlab database with

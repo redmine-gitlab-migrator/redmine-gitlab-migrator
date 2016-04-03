@@ -30,6 +30,9 @@ Does
 - Migration of Versions/Roadmaps keeping:
   - issues composing the version
   - statuses & due dates
+- Migration of wiki pages including history:
+  - versions become older commits
+  - author names (without email addresses!) are the author/committer names
 
 Does not
 --------
@@ -38,7 +41,6 @@ Does not
   cannot be transposed 1-1 to gitlab ACL)
 - Migrate repositories (piece of cake to do by hand, + redmine allows multiple
   repositories per project where gitlab does not)
-- Migrate wikis (because we don't use them at @oasiswork, feel free to contribute)
 - Migrate the whole redmine installation at once, because namespacing is different in
   redmine and gitlab
 - Archive the redmine project for you
@@ -54,8 +56,9 @@ Requires
 - Python >= 3.4
 - gitlab >= 7.0
 - redmine >= 1.3
-- Admin token on redmine
-- Admin token on gitlab
+- pandoc >= 1.17.0.0
+- API token on redmine
+- API token on gitlab
 - No preexisting issues on gitlab project
 - Already synced users (those required in the project you are migrating)
 
@@ -168,6 +171,24 @@ commad with sufficient rights, from there:
 
     migrate-rg iid --gitlab-key xxxx \
       http://git.example.com/mygroup/myproject --check
+
+### Migrate wiki pages
+
+First, clone the GitLab wiki repository (go to your project's Wiki on GitLab,
+click on "Git Access" and copy the URL) somewhere local to your machine. The
+conversion process works even if there are pre-existing wiki pages, however
+this is NOT recommended.
+
+    migrate-rg pages --redmine-key xxxx --gitlab-wiki xxxx \
+      https://redmine.example.com/projects/myproject \
+
+where gitlab-wiki should be the path to the cloned repository (must be local
+to your machine). Add "--no-history" if you do not want the old versions of
+each page to be converted, too.
+
+After conversion, verify that everything is correct (a copy of the original
+wiki page is included in the repo, however not added/commited), and then
+simply push it back to GitLab.
 
 ### Import git repository
 

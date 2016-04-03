@@ -96,6 +96,14 @@ class RedmineProject(Project):
 
         return self._cache_issues
 
+    def get_all_pages(self):
+        return self.api.get(
+            '{}/wiki/index.json'.format(self.public_url))
+
+    def get_page(self, title, version):
+        return self.api.get(
+            '{}/wiki/{}/{}.json'.format(self.public_url, title, version))
+
     def get_participants(self):
         """Get participating users (issues authors/owners)
 
