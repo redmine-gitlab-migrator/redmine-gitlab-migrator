@@ -79,15 +79,15 @@ class RedmineProject(Project):
 
     def get_all_issues(self):
         issues = self.api.unpaginated_get(
-            '{}/issues.json?status_id=*'.format(self.public_url))
+            '{}/issues.json?status_id=*'.format(self.public_url), verify=False)
         detailed_issues = []
         # It's impossible to get issue history from list view, so get it from
         # detail view...
 
         for issue_id in (i['id'] for i in issues):
-            issue_url = '{}/issues/{}.json?include=journals,watchers,relations,childrens,attachments'.format(
+            issue_url = '{}/issues/{}.json?include=journals,watchers,relations,childrens,attachments,changesets'.format(
                 self.instance_url, issue_id)
-            detailed_issues.append(self.api.get(issue_url))
+            detailed_issues.append(self.api.get(issue_url, verify=False))
 
         return detailed_issues
 
@@ -112,7 +112,7 @@ class RedmineProject(Project):
             # The anonymous user is not really part of the project...
             if i != ANONYMOUS_USER_ID:
                 users.append(self.api.get('{}/users/{}.json'.format(
-                    self.instance_url, i)))
+                    self.instance_url, i), verify=False))
         return users
 
     def get_users_index(self):
@@ -121,5 +121,5 @@ class RedmineProject(Project):
         return {i['id']: i for i in self.get_participants()}
 
     def get_versions(self):
-        response = self.api.get('{}/versions.json'.format(self.public_url))
+        response = self.api.get('{}/versions.json'.format(self.public_url), verify=False)
         return response['versions']

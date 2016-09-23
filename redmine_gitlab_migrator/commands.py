@@ -123,7 +123,7 @@ def perform_migrate_issues(args):
     issues = redmine_project.get_all_issues()
     milestones_index = gitlab_project.get_milestones_index()
     issues_data = (
-        convert_issue(
+        convert_issue(args.redmine_key,
             i, redmine_users_index, gitlab_users_index, milestones_index)
         for i in issues)
 

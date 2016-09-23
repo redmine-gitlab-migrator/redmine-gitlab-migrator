@@ -1,7 +1,10 @@
 import re
+import logging
 
 from . import APIClient, Project
+from urllib.request import urlopen
 
+log = logging.getLogger(__name__)
 
 class GitlabClient(APIClient):
     # see http://doc.gitlab.com/ce/api/#pagination
@@ -28,7 +31,7 @@ class GitlabInstance:
         self.api = client
 
     def get_all_users(self):
-        return self.api.get('{}/users'.format(self.url))
+        return self.api.get('{}/users'.format(self.url), verify=False)
 
     def get_users_index(self):
         """ Returns dict index of users (by login)
@@ -48,27 +51,73 @@ class GitlabProject(Project):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.api_url = (
-            '{base_url}api/v3/projects/{namespace}%2F{project_name}'.format(
-                **self._url_match.groupdict()))
+
         self.instance_url = '{}/api/v3'.format(
             self._url_match.group('base_url'))
+
+        # fetch project_id via api, thanks to lewicki-pk 
+        # https://github.com/oasiswork/redmine-gitlab-migrator/pull/2
+        # but also take int account, that there might be the same project in different namespaces
+        path_with_namespace = (
+            '{namespace}/{project_name}'.format(
+                **self._url_match.groupdict())) 
+        projectId = -1
+
+        projects_info = self.api.get('{}/projects'.format(self.instance_url), verify=False)
+ 
+        for project_attributes in projects_info:
+            if project_attributes.get('path_with_namespace') == path_with_namespace:
+                projectId = project_attributes.get('id')
+
+        self.project_id = projectId
+        if projectId == -1 :
+            sys.exit()
+
+        self.api_url = (
+            '{base_url}api/v3/projects/'.format(
+                **self._url_match.groupdict())) + str(projectId)
+
 
     def is_repository_empty(self):
         """ Heuristic to check if repository is empty
         """
-        return self.api.get(self.api_url)['default_branch'] is None
+        return self.api.get(self.api_url, verify=False)['default_branch'] is None
+
+    def uploads_to_string(self, uploads):
+
+        uploads_url = '{}/uploads'.format(self.api_url)
+        l = []
+        for u in uploads:
+
+           # http://docs.python-requests.org/en/latest/user/quickstart/#post-a-multipart-encoded-file 
+           # http://stackoverflow.com/questions/20830551/how-to-streaming-upload-with-python-requests-module-include-file-and-data
+           files = [("file", (u['filename'], urlopen(u['content_url']), u['content_type']))]
+
+           upload = self.api.post(
+               uploads_url, files=files, verify=False)
+           #log.info(upload)
+           l.append('{} {}'.format(upload['markdown'], u['description']))
+
+        return "\n  * ".join(l)
 
     def create_issue(self, data, meta):
         """ High-level issue creation
 
-        :param meta: dict with "sudo_user", "should_close" and "notes" keys
+        :param meta: dict with "sudo_user", "must_close", "notes" and "attachments" keys
         :param data: dict formatted as the gitlab API expects it
         :return: the created issue (without notes)
         """
+
+        # attachments have to be uploaded prior to creating an issue
+        # attachments are not related to an issue but can be referenced instead
+        # see: https://docs.gitlab.com/ce/api/projects.html#upload-a-file
+        uploads_text = self.uploads_to_string(meta['uploads'])
+        if len(uploads_text) > 0:
+           data['description'] = "{}\n* Uploads:\n  * {}".format(data['description'], uploads_text)
+
         issues_url = '{}/issues'.format(self.api_url)
         issue = self.api.post(
-            issues_url, data=data, headers={'SUDO': meta['sudo_user']})
+            issues_url, data=data, headers={'SUDO': meta['sudo_user']}, verify=False)
 
         issue_url = '{}/{}'.format(issues_url, issue['id'])
 
@@ -77,13 +126,13 @@ class GitlabProject(Project):
         for note_data, note_meta in meta['notes']:
             self.api.post(
                 issue_notes_url, data=note_data,
-                headers={'SUDO': note_meta['sudo_user']})
+                headers={'SUDO': note_meta['sudo_user']}, verify=False)
 
         # Handle closed status
         if meta['must_close']:
             altered_issue = issue.copy()
             altered_issue['state_event'] = 'close'
-            self.api.put(issue_url, data=altered_issue)
+            self.api.put(issue_url, data=altered_issue, verify=False)
 
         return issue
 
@@ -95,26 +144,26 @@ class GitlabProject(Project):
         :return: the created milestone
         """
         milestones_url = '{}/milestones'.format(self.api_url)
-        milestone = self.api.post(milestones_url, data=data)
+        milestone = self.api.post(milestones_url, data=data, verify=False)
 
         if meta['must_close']:
             milestone_url = '{}/{}'.format(milestones_url, milestone['id'])
             altered_milestone = milestone.copy()
             altered_milestone['state_event'] = 'close'
 
-            self.api.put(milestone_url, data=altered_milestone)
+            self.api.put(milestone_url, data=altered_milestone, verify=False)
         return milestone
 
     def get_issues(self):
-        return self.api.get('{}/issues'.format(self.api_url))
+        return self.api.get('{}/issues'.format(self.api_url), verify=False)
 
     def get_members(self):
-        return self.api.get('{}/members'.format(self.api_url))
+        return self.api.get('{}/members'.format(self.api_url), verify=False)
 
     def get_milestones(self):
         if not hasattr(self, '_cache_milestones'):
             self._cache_milestones = self.api.get(
-                '{}/milestones'.format(self.api_url))
+                '{}/milestones'.format(self.api_url), verify=False)
         return self._cache_milestones
 
     def get_milestones_index(self):
@@ -132,9 +181,10 @@ class GitlabProject(Project):
         return all((i in gitlab_user_names for i in usernames))
 
     def get_id(self):
-        return self.api.get(self.api_url)['id']
+        return self.api.get(self.api_url, verify=False)['id']
 
     def get_instance(self):
         """ Return a GitlabInstance
         """
         return GitlabInstance(self.instance_url, self.api)
+

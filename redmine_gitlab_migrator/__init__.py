@@ -2,6 +2,10 @@ import logging
 
 import requests
 
+# http://stackoverflow.com/a/28002687/98491 
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 log = logging.getLogger(__name__)
 
 
