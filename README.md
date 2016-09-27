@@ -152,7 +152,6 @@ commad with sufficient rights, from there:
     migrate-rg iid --gitlab-key xxxx \
       http://git.example.com/mygroup/myproject --check
 
-
 ### Import git repository
 
 A bare matter of `git remote set-url && git push`, see git documentation.
@@ -165,6 +164,26 @@ to reorganize your projects if you were using that feature of Redmine.
 If you want to.
 
 You're good to go :).
+
+### Optional: Redirect redmine to gitlab (for apache)
+
+Since redmine has a common *https://redmine.company.tld/issues/{issueid}* url for issues, you can't create a generic redirect in apache.
+
+This command creates redirect rules that you can place in your `.htaccess` file.
+
+    migrate-rg redirect --redmine-key xxxx --gitlab-key xxxx \
+      https://redmine.example.com/projects/myproject \
+      http://git.example.com/mygroup/myproject > htaccess.example
+
+The content of htaccess.example will be
+
+    # uncomment next line to enable RewriteEngine
+    # RewriteEngine On
+    # Redirects from https://redmine.example.com/projects/myproject to https://git.example.com/mygroup/myproject
+    RedirectMatch 301 ^/issues/1$ https://git.example.com/mygroup/myproject/issues/1
+    RedirectMatch 301 ^/issues/2$ https://git.example.com/mygroup/myproject/issues/2
+    ...
+    RedirectMatch 301 ^/issues/999$ https://git.example.com/mygroup/myproject/999
 
 Unit testing
 ------------

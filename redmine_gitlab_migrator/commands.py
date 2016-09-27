@@ -37,18 +37,22 @@ def parse_args():
         'roadmap', help=perform_migrate_roadmap.__doc__)
     parser_roadmap.set_defaults(func=perform_migrate_roadmap)
 
+    parser_redirect = subparsers.add_parser(
+        'redirect', help=perform_redirect.__doc__)
+    parser_redirect.set_defaults(func=perform_redirect)
+
     parser_iid = subparsers.add_parser(
         'iid', help=perform_migrate_iid.__doc__)
     parser_iid.set_defaults(func=perform_migrate_iid)
 
-    for i in (parser_issues, parser_roadmap):
+    for i in (parser_issues, parser_roadmap, parser_redirect):
         i.add_argument('redmine_project_url')
         i.add_argument(
             '--redmine-key',
             required=True,
             help="Redmine administrator API key")
 
-    for i in (parser_issues, parser_roadmap, parser_iid):
+    for i in (parser_issues, parser_roadmap, parser_iid, parser_redirect):
         i.add_argument('gitlab_project_url')
         i.add_argument(
             '--gitlab-key',
@@ -275,6 +279,19 @@ def perform_migrate_roadmap(args):
             created = gitlab_project.create_milestone(data, meta)
             log.info("Version {}".format(created['title']))
 
+def perform_redirect(args):
+    redmine = RedmineClient(args.redmine_key, args.no_verify)
+    redmine_project = RedmineProject(args.redmine_project_url, redmine)
+
+    # get issues
+    redmine_issues = redmine_project.get_all_issues()
+
+    print('# uncomment next line to enable RewriteEngine')
+    print('# RewriteEngine On')
+    print('# Redirects from {} to {}'.format(args.redmine_project_url, args.gitlab_project_url))
+
+    for issue in redmine_issues:
+        print('RedirectMatch 301 ^/issues/{}$ {}/issues/{}'.format(issue['id'], args.gitlab_project_url, issue['id']))
 
 def main():
     args = parse_args()
