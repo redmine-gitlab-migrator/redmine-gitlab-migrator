@@ -2,12 +2,17 @@ import logging
 
 import requests
 
+# http://stackoverflow.com/a/28002687/98491 
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 log = logging.getLogger(__name__)
 
 
 class APIClient:
-    def __init__(self, api_key):
+    def __init__(self, api_key, verify):
         self.api_key = api_key
+        self.verify = verify
 
     def get_auth_headers(self):
         """ Method to be overloaded by child classes
@@ -21,6 +26,7 @@ class APIClient:
         headers = kwargs.get('headers', {})
         headers.update(self.get_auth_headers())
         _kwargs['headers'] = headers
+        _kwargs['verify'] = self.verify
         return _kwargs
 
     def _req(self, func, *args, **kwargs):
