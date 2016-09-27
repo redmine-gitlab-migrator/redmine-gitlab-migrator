@@ -13,6 +13,11 @@ FROM issues
 WHERE title ~* '{regex}' AND project_id={project_id};
 """
 
+UPDATE_IID_ISSUES = r"""
+UPDATE issues SET
+  iid = iid * 100000
+WHERE title ~* '{regex}' AND project_id={project_id};
+"""
 
 MIGRATE_IID_ISSUES = r"""
 UPDATE issues SET

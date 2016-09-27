@@ -163,6 +163,103 @@ class FakeGitlabClient:
         if url.endswith('/users'):
             return [JOHN, JACK]
 
+        elif url.endswith('api/v3/projects'):
+            return [{
+                "id": 3,
+                "description": None,
+                "default_branch": "master",
+                "public": False,
+                "visibility_level": 0,
+                "ssh_url_to_repo":
+                "git@example.com:diaspora/diaspora-project-site.git",
+                "http_url_to_repo":
+                "http://example.com/diaspora/diaspora-project-site.git",
+                "web_url": "http://example.com/diaspora/diaspora-project-site",
+                "tag_list": [
+                    "example",
+                    "disapora project"
+                ],
+                "owner": {
+                    "id": 3,
+                    "name": "Diaspora",
+                    "created_at": "2013-09-30T13: 46: 02Z"
+                },
+                "name": "Diaspora Project Site",
+                "name_with_namespace": "Diaspora / Diaspora Project Site",
+                "path": "diaspora-project-site",
+                "path_with_namespace": "diaspora/diaspora-project-site",
+                "issues_enabled": True,
+                "merge_requests_enabled": True,
+                "wiki_enabled": True,
+                "snippets_enabled": False,
+                "created_at": "2013-09-30T13: 46: 02Z",
+                "last_activity_at": "2013-09-30T13: 46: 02Z",
+                "creator_id": 3,
+                "namespace": {
+                    "created_at": "2013-09-30T13: 46: 02Z",
+                    "description": "",
+                    "id": 3,
+                    "name": "Diaspora",
+                    "owner_id": 1,
+                    "path": "diaspora",
+                    "updated_at": "2013-09-30T13: 46: 02Z"
+                },
+                "permissions": {
+                    "project_access": {
+                        "access_level": 10,
+                        "notification_level": 3
+                    },
+                    "group_access": {
+                        "access_level": 50,
+                        "notification_level": 3
+                    }
+                },
+                "archived": False,
+                "avatar_url":
+                "http://example.com/uploads/project/avatar/3/uploads/avr.png"
+            },
+            {
+                "id": 6,
+                "description": None,
+                "default_branch": None,
+                "public": False,
+                "visibility_level": 0,
+                "ssh_url_to_repo": "git@example.com:brightbox/puppet.git",
+                "http_url_to_repo": "http://example.com/brightbox/puppet.git",
+                "web_url": "http://example.com/brightbox/puppet",
+                "tag_list": [
+                    "example",
+                    "puppet"
+                ],
+                "owner": {
+                    "id": 4,
+                    "name": "Brightbox",
+                    "created_at": "2013-09-30T13:46:02Z"
+                },
+                "name": "Puppet",
+                "name_with_namespace": "Brightbox / Puppet",
+                "path": "puppet",
+                "path_with_namespace": "brightbox/puppet",
+                "issues_enabled": True,
+                "merge_requests_enabled": True,
+                "wiki_enabled": True,
+                "snippets_enabled": False,
+                "created_at": "2013-09-30T13:46:02Z",
+                "last_activity_at": "2013-09-30T13:46:02Z",
+                "creator_id": 3,
+                "namespace": {
+                    "created_at": "2013-09-30T13:46:02Z",
+                    "description": "",
+                    "id": 4,
+                    "name": "Brightbox",
+                    "owner_id": 1,
+                    "path": "brightbox",
+                    "updated_at": "2013-09-30T13:46:02Z"
+                },
+                "archived": False,
+                "avatar_url": None
+            }]
+
         elif (url.endswith('/projects/3') or
               url.endswith('/projects/diaspora%2Fdiaspora-project-site')):
             return {
@@ -220,7 +317,8 @@ class FakeGitlabClient:
                 "http://example.com/uploads/project/avatar/3/uploads/avr.png"
             }
 
-        elif url.endswith('/projects/diaspora%2Fdiaspora-project-site/issues'):
+        elif (url.endswith('/projects/3/issues') or
+              url.endswith('/projects/diaspora%2Fdiaspora-project-site/issues')):
             return [
                 {
                     "id": 43,
@@ -283,8 +381,8 @@ class FakeGitlabClient:
                 }
             ]
 
-        elif url.endswith(
-                '/projects/diaspora%2Fdiaspora-project-site/members'):
+        elif (url.endswith('/projects/3/members') or
+              url.endswith('/projects/diaspora%2Fdiaspora-project-site/members')):
             return [JACK, JOHN]
 
         elif (url.endswith('/projects/6') or
@@ -330,10 +428,12 @@ class FakeGitlabClient:
                 "archived": False,
                 "avatar_url": None
             }
-        elif url.endswith('/projects/brightbox%2Fpuppet/issues'):
+        elif (url.endswith('/projects/6/issues') or
+              url.endswith('/projects/brightbox%2Fpuppet/issues')):
             return []
 
-        elif url.endswith('/projects/brightbox%2Fpuppet/members'):
+        elif (orl.endswith('/projects/6/members') or	
+              url.endswith('/projects/brightbox%2Fpuppet/members')):
             return []
 
         else:
@@ -430,6 +530,7 @@ class FakeRedmineClient:
             raise ValueError('{} is unknown data test'.format(url))
 
     def get(self, url):
+
         if url.endswith('projects/brightbox/puppet.json'):
             return {
                 "project": {
