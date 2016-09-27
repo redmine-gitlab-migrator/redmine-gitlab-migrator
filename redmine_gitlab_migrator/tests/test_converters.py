@@ -34,12 +34,13 @@ class ConvertorTestCase(unittest.TestCase):
         }
 
     def test_closed_issue(self):
+        redmine_api_key = '<redmine_api_key>'
         redmine_issue = REDMINE_ISSUE_1732
         gitlab_issue, meta = convert_issue(
-            redmine_issue, self.redmine_user_index, self.gitlab_users_idx, {})
+            redmine_api_key, redmine_issue, self.redmine_user_index, self.gitlab_users_idx, {}, ['closed', 'rejected'], ['customer'])
         self.assertEqual(gitlab_issue, {
             'title': '-RM-1732-MR-Update doc for v1',
-            'description': 'The doc is a bit old\n\n*(from redmine: created on 2015-08-21, closed on 2015-09-09)*',
+            'description': 'The doc is a bit old\n\n*(from redmine: created on 2015-08-21, closed on 2015-09-09)*\n',
             'labels': ['Evolution'],
             'assignee_id': JOHN['id'],
         })
@@ -52,26 +53,29 @@ class ConvertorTestCase(unittest.TestCase):
                  {'sudo_user': 'john_smith'})
                 # empty notes should not be kept
             ],
-            'must_close': True
+            'must_close': True,
+            'uploads': []
         })
 
     def test_open_issue(self):
+        redmine_api_key = '<redmine_api_key>'
         redmine_issue = REDMINE_ISSUE_1439
         milestone_index = {'v0.11': {'id': 3, 'title': 'v0.11'}}
         gitlab_issue, meta = convert_issue(
-            redmine_issue, self.redmine_user_index, self.gitlab_users_idx,
-            milestone_index)
+            redmine_api_key, redmine_issue, self.redmine_user_index, self.gitlab_users_idx,
+            milestone_index, ['closed', 'rejected'], ['customer'])
 
         self.assertEqual(gitlab_issue, {
             'title': '-RM-1439-MR-Support SSL',
-            'description': '\n\n*(from redmine: created on 2015-04-03, relates #1430)*',
+            'description': '\n\n*(from redmine: created on 2015-04-03)*\n\n* Relations:\n  * relates #1430',
             'labels': ['Evolution'],
             'milestone_id': 3,
         })
         self.assertEqual(meta, {
             'sudo_user': JOHN['username'],
             'notes': [],
-            'must_close': False
+            'must_close': False,
+            'uploads': []
         })
 
     def test_open_version(self):
@@ -112,14 +116,23 @@ class ConvertorTestCase(unittest.TestCase):
             'issue_id': 2, 'issue_to_id': 3, 'relation_type': 'relates'}
         simple_otherway = {
             'issue_id': 3, 'issue_to_id': 2, 'relation_type': 'ref'}
+        children = [
+            {'id': 3}, {'id': 4}
+        ]
 
-        self.assertEqual(relations_to_string([], 42), '')
+        self.assertEqual(relations_to_string([], [], 0, 42), '')
         self.assertEqual(
-            relations_to_string([simple_oneway], 2),
-            'relates #3')
+            relations_to_string([simple_oneway], [], 0, 2),
+            '  * relates #3')
         self.assertEqual(
-            relations_to_string([simple_otherway], 2),
-            'ref #3')
+            relations_to_string([simple_otherway], [], 0, 2),
+            '  * ref #3')
         self.assertEqual(
-            relations_to_string([simple_oneway, simple_otherway], 2),
-            'relates #3, ref #3')
+            relations_to_string([simple_oneway, simple_otherway], [], 0, 2),
+            '  * relates #3\n  * ref #3')
+        self.assertEqual(
+            relations_to_string([], children, 0, 2),
+            '  * child #3\n  * child #4')
+        self.assertEqual(
+            relations_to_string([], [], 5, 2),
+            '  * parent #5')

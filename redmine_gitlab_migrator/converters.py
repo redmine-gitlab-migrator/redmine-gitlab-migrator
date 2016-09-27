@@ -8,15 +8,9 @@ log = logging.getLogger(__name__)
 # Utils
 
 
-def redmine_uid_to_login(redmine_id, redmine_user_index):
-    return redmine_user_index[redmine_id]['login']
-
-
-def redmine_uid_to_gitlab_uid(redmine_id,
-                              redmine_user_index, gitlab_user_index):
-    username = redmine_uid_to_login(redmine_id, redmine_user_index)
-    return gitlab_user_index[username]['id']
-
+def redmine_uid_to_gitlab_user(redmine_id, redmine_user_index, gitlab_user_index):
+    redmine_login = redmine_user_index[redmine_id]['login']
+    return gitlab_user_index[redmine_login]
 
 def convert_attachment(redmine_issue_attachment, redmine_api_key):
     """ Convert a list of redmine attachments to gitlab uploads
@@ -29,13 +23,13 @@ def convert_attachment(redmine_issue_attachment, redmine_api_key):
         'filename': redmine_issue_attachment['filename'],
         'description': redmine_issue_attachment.get('description'),
         'content_url': '{}?key={}'.format(redmine_issue_attachment['content_url'], redmine_api_key),
-        'content_type': redmine_issue_attachment['content_type']
+        'content_type': redmine_issue_attachment.get('content_type', 'application/octet-stream')
     }
 
     return uploads
     
 
-def convert_notes(redmine_issue_journals, redmine_user_index):
+def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index):
     """ Convert a list of redmine journal entries to gitlab notes
 
     Filters out the empty notes (ex: bare status change)
@@ -53,8 +47,8 @@ def convert_notes(redmine_issue_journals, redmine_user_index):
             body = "{}\n\n*(from redmine: written on {})*".format(
                 journal_notes, entry['created_on'][:10])
             try:
-                author = redmine_uid_to_login(
-                    entry['user']['id'], redmine_user_index)
+                author = redmine_uid_to_gitlab_user(
+                    entry['user']['id'], redmine_user_index, gitlab_user_index)['username']
             except KeyError:
                 # In some cases you have anonymous notes, which do not exist in
                 # gitlab.
@@ -80,18 +74,16 @@ def relations_to_string(relations, children, parent_id, issue_id):
             other_issue_id = i['issue_to_id']
         else:
             other_issue_id = i['issue_id']
-        l.append('{} #{}'.format(i['relation_type'], other_issue_id))
+        l.append('  * {} #{}'.format(i['relation_type'], other_issue_id))
 
     for i in children:
-        id = i['id']
-        tracker = i['tracker']
-        
-        l.append('{} #{}'.format('child', id))
+        id = i['id']        
+        l.append('  * {} #{}'.format('child', id))
 
     if parent_id > 0:
-       l.append('{} #{}'.format('parent', parent_id))
+       l.append('  * {} #{}'.format('parent', parent_id))
 
-    return "\n  * ".join(l)
+    return "\n".join(l)
 
 def changesets_to_string(changesets):
     """ Convert redmine formal changesets to some denormalized string
@@ -101,15 +93,14 @@ def changesets_to_string(changesets):
     """
     l = []
     for i in changesets:
-        #log.info(i)
         revision = i['revision']
         user = i['user']['name']
         committed_on = i['committed_on']
         comments = i['comments']
 
-        l.append('Revision {} von {} am {}:\n```\n{}\n```'.format(revision, user, committed_on, comments))
+        l.append('  * Revision {} von {} am {}:\n```\n{}\n```'.format(revision, user, committed_on, comments))
 
-    return "\n  * ".join(l)
+    return "\n".join(l)
 
 def custom_fields_to_string(custom_fields, custom_fields_include):
     """ Convert redmine custom fields to some denormalized string
@@ -119,22 +110,19 @@ def custom_fields_to_string(custom_fields, custom_fields_include):
     """
     l = []
     for i in custom_fields:
-        #log.info(i)
         name = i['name']
         
         if name in custom_fields_include and i.get('value'):
             # Name: Value
-            l.append('{}: {}'.format(name, i['value']))
+            l.append('  * {}: {}'.format(name, i['value']))
 
-    return "\n  * ".join(l)
+    return "\n".join(l)
 
 # Convertor
 
 def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_user_index,
-                  gitlab_milestones_index):
+                  gitlab_milestones_index, closed_states, custom_fields_include):
    
-    closed_states = ['closed', 'rejected', 'erledigt', 'abgewiesen']
-    custom_fields_include = ['Kunde']
     issue_state = redmine_issue['status']['name']
 
     if redmine_issue.get('closed_on', None):
@@ -148,8 +136,6 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
         close_text = ''
         closed = False
 
-    #log.info('issue {} {}, state: {}, closed: {}'.format(redmine_issue['id'], redmine_issue['subject'], issue_state, closed))
-
     relations = redmine_issue.get('relations', [])
     children = redmine_issue.get('children', [])
     parent_id = 0
@@ -158,17 +144,17 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
 
     relations_text = relations_to_string(relations, children, parent_id, redmine_issue['id'])
     if len(relations_text) > 0:
-        relations_text = "\n* Relations:\n  * " + relations_text
+        relations_text = "\n* Relations:\n" + relations_text
 
     changesets = redmine_issue.get('changesets', [])
     changesets_text = changesets_to_string(changesets)
     if len(changesets_text) > 0:
-        changesets_text = "\n* Changesets:\n  * " + changesets_text
+        changesets_text = "\n* Changesets:\n" + changesets_text
 
     custom_fields = redmine_issue.get('custom_fields', [])
     custom_fields_text = custom_fields_to_string(custom_fields, custom_fields_include)
     if len(custom_fields_text) > 0:
-        custom_fields_text = "\n* Custom Fields:\n  * " + custom_fields_text
+        custom_fields_text = "\n* Custom Fields:\n" + custom_fields_text
 
     labels = [redmine_issue['tracker']['name']]
     if (redmine_issue.get('category')):
@@ -195,8 +181,8 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
         data['milestone_id'] = gitlab_milestones_index[version['name']]['id']
 
     try:
-        author_login = redmine_uid_to_login(
-            redmine_issue['author']['id'], redmine_user_index)
+        author_login = redmine_uid_to_gitlab_user(
+            redmine_issue['author']['id'], redmine_user_index, gitlab_user_index)['username']
 
     except KeyError:
         log.warning(
@@ -207,15 +193,21 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     meta = {
         'sudo_user': author_login,
         'notes': list(convert_notes(redmine_issue['journals'],
-                                    redmine_user_index)),
+                                    redmine_user_index, gitlab_user_index)),
         'must_close': closed,
-        'uploads': (convert_attachment(a, redmine_api_key) for a in attachments)
+        'uploads': list(convert_attachment(a, redmine_api_key) for a in attachments)
     }
 
     assigned_to = redmine_issue.get('assigned_to', None)
     if assigned_to is not None:
-        data['assignee_id'] = redmine_uid_to_gitlab_uid(
-            assigned_to['id'], redmine_user_index, gitlab_user_index)
+        try:
+            data['assignee_id'] = redmine_uid_to_gitlab_user(
+                assigned_to['id'], redmine_user_index, gitlab_user_index)['id']
+        except KeyError:
+            log.warning(
+                'Redmine issue #{} assignee is anonymous. gitlab assinee is attributed '
+                'to current admin\n'.format(redmine_issue['id']))
+
     return data, meta
 
 

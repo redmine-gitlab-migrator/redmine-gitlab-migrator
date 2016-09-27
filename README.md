@@ -15,14 +15,18 @@ Does
 - Per-project migrations
 - Migration of issues, keeping as much metadata as possible:
   - redmine trackers become tags
+  - redmine categories become tags
   - issues comments are kept and assigned to the right users
   - issues final status (open/closed) are kept along with open/close date (not
     detailed status history)
   - issues assignments are kept
   - issues numbers (ex: `#123`)
   - issues/notes authors
-  - issue/notes original dates, but as comments
-  - relations (although gitlab model for relations is simpler)
+  - issues/notes original dates, but as comments
+  - issue attachements
+  - issue related changesets
+  - issues custom fields (if specified) 
+  - relations including children and parent (although gitlab model for relations is simpler)
 - Migration of Versions/Roadmaps keeping:
   - issues composing the version
   - statuses & due dates
@@ -57,7 +61,8 @@ Requires
 - No preexisting issues on gitlab project
 - Already synced users (those required in the project you are migrating)
 
-(It was developed/tested arround redmine 2.5.2, gitlab 8.2.0, python 3.4)
+(Original version was developed/tested around redmine 2.5.2, gitlab 8.2.0, python 3.4)
+(Updated version was developed/tested around redmine 2.1.2, gitlab 8.12.1, python 3.4)
 
 
 Let's go
@@ -123,6 +128,19 @@ Note that your issue titles will be annotated with the original redmine issue
 ID, like *-RM-1186-MR-logging*. This annotation will be used (and removed) by
 the next step.
 
+At least redmine 2.1.2 has no closed_on field, so you have to specify the names of the states which define closed issues. 
+defaults to closed,rejected
+
+    --closed-states closed,rejected,wontfix
+
+If you want to migrate redmine custom fields (as description), you can specify
+
+    --custom-fields Customer,ZendeskIssueId
+ 
+If you're using SSL with self signed cerificates and get an *requests.exceptions.SSLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed (_ssl.c:600)* error, you can disable certificate validation with
+
+    --no-verify
+
 ### Migrate Issues ID (iid)
 
 You can retain the issues ID from redmine, **this cannot be done via REST
@@ -131,8 +149,7 @@ API**, thus it requires **direct access to the gitlab machine**.
 So you have to log in the gitlab machine (eg. via SSH), and then issue the
 commad with sufficient rights, from there:
 
-    migrate-rg iid --redmine --redmine-key xxxx --gitlab-key xxxx \
-      https://redmine.example.com/projects/myproject \
+    migrate-rg iid --gitlab-key xxxx \
       http://git.example.com/mygroup/myproject --check
 
 
