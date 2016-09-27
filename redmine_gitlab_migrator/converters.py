@@ -98,7 +98,7 @@ def changesets_to_string(changesets):
         committed_on = i['committed_on']
         comments = i['comments']
 
-        l.append('  * Revision {} von {} am {}:\n```\n{}\n```'.format(revision, user, committed_on, comments))
+        l.append('  * Revision {} von {} am {}:\n\n```\n{}\n```\n'.format(revision, user, committed_on, comments))
 
     return "\n".join(l)
 
