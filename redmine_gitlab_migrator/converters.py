@@ -27,7 +27,7 @@ def convert_attachment(redmine_issue_attachment, redmine_api_key):
     }
 
     return uploads
-    
+
 
 def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index):
     """ Convert a list of redmine journal entries to gitlab notes
@@ -77,7 +77,7 @@ def relations_to_string(relations, children, parent_id, issue_id):
         l.append('  * {} #{}'.format(i['relation_type'], other_issue_id))
 
     for i in children:
-        id = i['id']        
+        id = i['id']
         l.append('  * {} #{}'.format('child', id))
 
     if parent_id > 0:
@@ -111,7 +111,7 @@ def custom_fields_to_string(custom_fields, custom_fields_include):
     l = []
     for i in custom_fields:
         name = i['name']
-        
+
         if name in custom_fields_include and i.get('value'):
             # Name: Value
             l.append('  * {}: {}'.format(name, i['value']))
@@ -122,7 +122,7 @@ def custom_fields_to_string(custom_fields, custom_fields_include):
 
 def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_user_index,
                   gitlab_milestones_index, closed_states, custom_fields_include):
-   
+
     issue_state = redmine_issue['status']['name']
 
     if redmine_issue.get('closed_on', None):
@@ -159,9 +159,13 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     labels = [redmine_issue['tracker']['name']]
     if (redmine_issue.get('category')):
         labels.append(redmine_issue['category']['name'])
+    if (redmine_issue.get('status')):
+        labels.append(redmine_issue['status']['name'])
+    if (redmine_issue.get('priority')):
+        labels.append(redmine_issue['priority']['name'])
 
     attachments = redmine_issue.get('attachments', [])
-  
+
     data = {
         'title': '-RM-{}-MR-{}'.format(
             redmine_issue['id'], redmine_issue['subject']),
@@ -173,7 +177,7 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
             changesets_text,
             custom_fields_text
         ),
-        'labels': labels,
+        'labels': ','.join(labels),
     }
 
     version = redmine_issue.get('fixed_version', None)
