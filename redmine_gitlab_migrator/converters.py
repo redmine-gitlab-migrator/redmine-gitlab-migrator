@@ -165,6 +165,7 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
         labels.append(redmine_issue['priority']['name'])
 
     attachments = redmine_issue.get('attachments', [])
+    due_date = redmine_issue.get('due_date', None)
 
     data = {
         'title': '-RM-{}-MR-{}'.format(
@@ -178,6 +179,7 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
             custom_fields_text
         ),
         'labels': ','.join(labels),
+        'due_date': due_date,
     }
 
     version = redmine_issue.get('fixed_version', None)
