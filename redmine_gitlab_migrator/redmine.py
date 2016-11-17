@@ -87,7 +87,7 @@ class RedmineProject(Project):
             # It's impossible to get issue history from list view, so get it from
             # detail view...
 
-            for issue_id in (i['id'] for i in issues):
+            for issue_id in sorted(i['id'] for i in issues):
                 issue_url = '{}/issues/{}.json?include=journals,watchers,relations,children,attachments,changesets'.format(
                     self.instance_url, issue_id)
                 detailed_issues.append(self.api.get(issue_url))
