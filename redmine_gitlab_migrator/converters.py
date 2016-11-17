@@ -179,6 +179,7 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
             changesets_text,
             custom_fields_text
         ),
+        'created_at': redmine_issue['created_on'],
         'labels': ','.join(labels),
     }
 
