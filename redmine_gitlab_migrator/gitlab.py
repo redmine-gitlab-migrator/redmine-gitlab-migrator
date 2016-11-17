@@ -148,9 +148,7 @@ class GitlabProject(Project):
 
         # Handle closed status
         if meta['must_close']:
-            altered_issue = issue.copy()
-            altered_issue['state_event'] = 'close'
-            self.api.put(issue_url, data=altered_issue)
+            self.api.put(issue_url, {'state_event': 'close'})
 
         return issue
 
