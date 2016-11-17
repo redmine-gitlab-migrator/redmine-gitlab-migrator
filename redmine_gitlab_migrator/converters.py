@@ -56,7 +56,8 @@ def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index)
                     'Redmine user {} is unknown, attribute note '
                     'to current admin\n'.format(entry['user']))
                 author = None
-            yield {'body': body}, {'sudo_user': author}
+            yield ({'body': body, 'created_at': entry['created_on']},
+                   {'sudo_user': author})
 
 
 def relations_to_string(relations, children, parent_id, issue_id):
