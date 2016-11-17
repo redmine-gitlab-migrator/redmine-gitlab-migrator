@@ -106,12 +106,17 @@ class RedmineProject(Project):
         users = []
 
         for i in self.get_all_issues():
+            journals = i.get('journals', [])
             for i in chain(i.get('watchers', []),
                            [i['author'], i.get('assigned_to', None)]):
 
                 if i is None:
                     continue
                 user_ids.add(i['id'])
+            for entry in journals:
+                if not entry.get('notes', None):
+                    continue
+                user_ids.add(entry['user']['id'])
 
         for i in user_ids:
             # The anonymous user is not really part of the project...
