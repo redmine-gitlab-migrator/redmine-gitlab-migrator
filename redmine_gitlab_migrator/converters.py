@@ -179,7 +179,7 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
             changesets_text,
             custom_fields_text
         ),
-        'labels': labels,
+        'labels': ','.join(labels),
     }
 
     version = redmine_issue.get('fixed_version', None)
