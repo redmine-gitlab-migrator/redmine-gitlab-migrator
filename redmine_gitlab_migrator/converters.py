@@ -170,8 +170,9 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     data = {
         'title': '-RM-{}-MR-{}'.format(
             redmine_issue['id'], redmine_issue['subject']),
-        'description': '{}\n\n*(from redmine: created on {}{})*\n{}{}{}'.format(
+        'description': '{}\n\n*(from redmine: issue id {}, created on {}{})*\n{}{}{}'.format(
             redmine_issue['description'],
+            redmine_issue['id'],
             redmine_issue['created_on'][:10],
             close_text,
             relations_text,
