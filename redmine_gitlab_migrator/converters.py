@@ -94,11 +94,16 @@ def changesets_to_string(changesets):
     l = []
     for i in changesets:
         revision = i['revision']
-        user = i['user']['name']
         committed_on = i['committed_on']
         comments = i['comments']
+        try:
+            user = i['user']['name']
+            by_user_str = ' by {}'.format(user)
+        except KeyError:
+            by_user_str = ''
 
-        l.append('  * Revision {} von {} am {}:\n\n```\n{}\n```\n'.format(revision, user, committed_on, comments))
+        l.append('  * Revision {}{} on {}:\n\n```\n{}\n```\n'.format(
+            revision, by_user_str, committed_on, comments))
 
     return "\n".join(l)
 
