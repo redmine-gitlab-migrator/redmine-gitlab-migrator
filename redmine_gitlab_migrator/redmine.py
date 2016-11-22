@@ -111,8 +111,11 @@ class RedmineProject(Project):
         for i in user_ids:
             # The anonymous user is not really part of the project...
             if i != ANONYMOUS_USER_ID:
-                users.append(self.api.get('{}/users/{}.json'.format(
-                    self.instance_url, i)))
+                user = self.api.get('{}/users/{}.json'.format(
+                    self.instance_url, i))
+                if user['login'] == 'admin':
+                    user['login'] = 'root'
+                users.append(user)
         return users
 
     def get_users_index(self):
