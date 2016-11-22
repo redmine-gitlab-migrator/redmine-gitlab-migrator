@@ -179,6 +179,8 @@ def perform_migrate_iid(args):
         exit(1)
 
     if not args.check:
+        sql_cmd = sql.MESS_WITH_IID.format(project_id=gitlab_project_id)
+        sql.run_query(sql_cmd)
         sql_cmd = sql.MIGRATE_IID_ISSUES.format(
             regex=regex_saved_iid, project_id=gitlab_project_id)
         out = sql.run_query(sql_cmd)
