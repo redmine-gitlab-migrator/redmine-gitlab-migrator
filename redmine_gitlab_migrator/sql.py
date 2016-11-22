@@ -21,6 +21,9 @@ UPDATE issues SET
 WHERE title ~* '{regex}' AND project_id={project_id};
 """
 
+MESS_WITH_IID = r"""
+UPDATE issues SET iid = iid + 6000 WHERE project_id={project_id};
+"""
 
 def run_query(
         cmd,
