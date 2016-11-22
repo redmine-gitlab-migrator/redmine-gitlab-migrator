@@ -113,7 +113,7 @@ class RedmineProject(Project):
             if i != ANONYMOUS_USER_ID:
                 user = self.api.get('{}/users/{}.json'.format(
                     self.instance_url, i))
-                if (user['login'] == 'admin') or not user['login']:
+                if user['login'] == 'admin':
                     user['login'] = 'root'
                 users.append(user)
         return users
