@@ -131,8 +131,7 @@ API**, thus it requires **direct access to the gitlab machine**.
 So you have to log in the gitlab machine (eg. via SSH), and then issue the
 commad with sufficient rights, from there:
 
-    migrate-rg iid --redmine --redmine-key xxxx --gitlab-key xxxx \
-      https://redmine.example.com/projects/myproject \
+    migrate-rg iid --gitlab-key xxxx \
       http://git.example.com/mygroup/myproject --check
 
 
