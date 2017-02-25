@@ -87,7 +87,7 @@ class RedmineProject(Project):
             # It's impossible to get issue history from list view, so get it from
             # detail view...
 
-            for issue_id in (i['id'] for i in issues):
+            for issue_id in sorted(i['id'] for i in issues):
                 issue_url = '{}/issues/{}.json?include=journals,watchers,relations,children,attachments,changesets'.format(
                     self.instance_url, issue_id)
                 detailed_issues.append(self.api.get(issue_url))
@@ -106,12 +106,17 @@ class RedmineProject(Project):
         users = []
 
         for i in self.get_all_issues():
+            journals = i.get('journals', [])
             for i in chain(i.get('watchers', []),
                            [i['author'], i.get('assigned_to', None)]):
 
                 if i is None:
                     continue
                 user_ids.add(i['id'])
+            for entry in journals:
+                if not entry.get('notes', None):
+                    continue
+                user_ids.add(entry['user']['id'])
 
         for i in user_ids:
             # The anonymous user is not really part of the project...

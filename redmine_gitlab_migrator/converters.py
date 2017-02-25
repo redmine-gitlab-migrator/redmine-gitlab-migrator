@@ -56,7 +56,8 @@ def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index)
                     'Redmine user {} is unknown, attribute note '
                     'to current admin\n'.format(entry['user']))
                 author = None
-            yield {'body': body}, {'sudo_user': author}
+            yield ({'body': body, 'created_at': entry['created_on']},
+                   {'sudo_user': author})
 
 
 def relations_to_string(relations, children, parent_id, issue_id):
@@ -94,11 +95,16 @@ def changesets_to_string(changesets):
     l = []
     for i in changesets:
         revision = i['revision']
-        user = i['user']['name']
         committed_on = i['committed_on']
         comments = i['comments']
+        try:
+            user = i['user']['name']
+            by_user_str = ' by {}'.format(user)
+        except KeyError:
+            by_user_str = ''
 
-        l.append('  * Revision {} von {} am {}:\n\n```\n{}\n```\n'.format(revision, user, committed_on, comments))
+        l.append('  * Revision {}{} on {}:\n\n```\n{}\n```\n'.format(
+            revision, by_user_str, committed_on, comments))
 
     return "\n".join(l)
 
@@ -168,18 +174,20 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     due_date = redmine_issue.get('due_date', None)
 
     data = {
-        'title': '-RM-{}-MR-{}'.format(
-            redmine_issue['id'], redmine_issue['subject']),
-        'description': '{}\n\n*(from redmine: created on {}{})*\n{}{}{}'.format(
+        'title': '{}'.format(
+            redmine_issue['subject']),
+        'description': '{}\n\n*(from redmine: issue id {}, created on {}{})*\n{}{}{}'.format(
             redmine_issue['description'],
+            redmine_issue['id'],
             redmine_issue['created_on'][:10],
             close_text,
             relations_text,
             changesets_text,
             custom_fields_text
         ),
-        'labels': ','.join(labels),
         'due_date': due_date,
+        'created_at': redmine_issue['created_on'],
+        'labels': ','.join(labels),
     }
 
     version = redmine_issue.get('fixed_version', None)
