@@ -10,6 +10,8 @@ log = logging.getLogger(__name__)
 
 def redmine_uid_to_gitlab_user(redmine_id, redmine_user_index, gitlab_user_index):
     redmine_login = redmine_user_index[redmine_id]['login']
+    if not redmine_login in gitlab_user_index:
+        redmine_login = 'root'
     return gitlab_user_index[redmine_login]
 
 def convert_attachment(redmine_issue_attachment, redmine_api_key):
@@ -174,8 +176,8 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     due_date = redmine_issue.get('due_date', None)
 
     data = {
-        'title': '{}'.format(
-            redmine_issue['subject']),
+        'title': '-RM-{}-MR-{}'.format(
+            redmine_issue['id'], redmine_issue['subject']),
         'description': '{}\n\n*(from redmine: issue id {}, created on {}{})*\n{}{}{}'.format(
             redmine_issue['description'],
             redmine_issue['id'],
@@ -221,6 +223,8 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
             log.warning(
                 'Redmine issue #{} assignee is anonymous. gitlab assinee is attributed '
                 'to current admin\n'.format(redmine_issue['id']))
+            if assigned_to['name']:
+                data['labels'] = data['labels'] + ',' + assigned_to['name']
 
     return data, meta
 
