@@ -5,6 +5,8 @@ import requests
 from . import APIClient, Project
 from urllib.request import urlopen
 
+from redmine_gitlab_migrator.converters import redmine_username_to_gitlab_username
+
 log = logging.getLogger(__name__)
 
 class GitlabClient(APIClient):
@@ -46,7 +48,12 @@ class GitlabInstance:
         """ Returns True if all users exist
         """
         gitlab_user_names = set([i['username'] for i in self.get_all_users()])
-        return all((i in gitlab_user_names for i in usernames))
+
+        translated = []
+        for i in usernames:
+            print(i, redmine_username_to_gitlab_username(i))
+            translated.append(redmine_username_to_gitlab_username(i))
+        return all((i in gitlab_user_names for i in translated))
 
 
 class GitlabProject(Project):

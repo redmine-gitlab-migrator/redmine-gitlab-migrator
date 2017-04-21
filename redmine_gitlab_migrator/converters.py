@@ -8,11 +8,22 @@ log = logging.getLogger(__name__)
 # Utils
 
 
+def redmine_username_to_gitlab_username(redmine_username):
+    if redmine_username == 'usermz':
+        return 'matejz'
+    return redmine_username
+
+
 def redmine_uid_to_gitlab_user(redmine_id, redmine_user_index, gitlab_user_index):
     redmine_login = redmine_user_index[redmine_id]['login']
+
+    # Check if mapping for this user exists
+    redmine_login = redmine_username_to_gitlab_username(redmine_login)
+
     if not redmine_login in gitlab_user_index:
         redmine_login = 'root'
     return gitlab_user_index[redmine_login]
+
 
 def convert_attachment(redmine_issue_attachment, redmine_api_key):
     """ Convert a list of redmine attachments to gitlab uploads
