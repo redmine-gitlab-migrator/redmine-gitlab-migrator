@@ -7,7 +7,7 @@ import sys
 from redmine_gitlab_migrator.redmine import RedmineProject, RedmineClient
 from redmine_gitlab_migrator.gitlab import GitlabProject, GitlabClient
 from redmine_gitlab_migrator.converters import convert_issue, convert_version
-from redmine_gitlab_migrator.logging import setup_module_logging
+from redmine_gitlab_migrator.logger import setup_module_logging
 from redmine_gitlab_migrator import sql
 
 
