@@ -31,7 +31,7 @@ def convert_attachment(redmine_issue_attachment, redmine_api_key):
     return uploads
 
 
-def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index):
+def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index, textile_converter):
     """ Convert a list of redmine journal entries to gitlab notes
 
     Filters out the empty notes (ex: bare status change)
@@ -46,6 +46,7 @@ def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index)
     for entry in redmine_issue_journals:
         journal_notes = entry.get('notes', '')
         if len(journal_notes) > 0:
+            journal_notes = textile_converter.convert(journal_notes)
             body = "{}\n\n*(from redmine: written on {})*".format(
                 journal_notes, entry['created_on'][:10])
             try:
@@ -129,7 +130,7 @@ def custom_fields_to_string(custom_fields, custom_fields_include):
 # Convertor
 
 def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_user_index,
-                  gitlab_milestones_index, closed_states, custom_fields_include):
+                  gitlab_milestones_index, closed_states, custom_fields_include, textile_converter):
 
     issue_state = redmine_issue['status']['name']
 
@@ -179,7 +180,7 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
         'title': '-RM-{}-MR-{}'.format(
             redmine_issue['id'], redmine_issue['subject']),
         'description': '{}\n\n*(from redmine: issue id {}, created on {}{})*\n{}{}{}'.format(
-            redmine_issue['description'],
+            textile_converter.convert(redmine_issue['description']),
             redmine_issue['id'],
             redmine_issue['created_on'][:10],
             close_text,
@@ -209,7 +210,7 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     meta = {
         'sudo_user': author_login,
         'notes': list(convert_notes(redmine_issue['journals'],
-                                    redmine_user_index, gitlab_user_index)),
+                                    redmine_user_index, gitlab_user_index, textile_converter)),
         'must_close': closed,
         'uploads': list(convert_attachment(a, redmine_api_key) for a in attachments)
     }

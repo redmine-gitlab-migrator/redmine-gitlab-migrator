@@ -8,6 +8,7 @@ from redmine_gitlab_migrator.redmine import RedmineProject, RedmineClient
 from redmine_gitlab_migrator.gitlab import GitlabProject, GitlabClient
 from redmine_gitlab_migrator.converters import convert_issue, convert_version
 from redmine_gitlab_migrator.logger import setup_module_logging
+from redmine_gitlab_migrator.wiki import TextileConverter
 from redmine_gitlab_migrator import sql
 
 
@@ -145,6 +146,7 @@ def perform_migrate_issues(args):
     gitlab_users_index = gitlab_instance.get_users_index()
     redmine_users_index = redmine_project.get_users_index()
     milestones_index = gitlab_project.get_milestones_index()
+    textile_converter = TextileConverter()
 
     log.debug('GitLab milestones are: {}'.format(', '.join(milestones_index) + ' '))
 
@@ -156,7 +158,7 @@ def perform_migrate_issues(args):
     log.info('Converting issues')
     issues_data = (
         convert_issue(args.redmine_key,
-            i, redmine_users_index, gitlab_users_index, milestones_index, closed_states, custom_fields)
+            i, redmine_users_index, gitlab_users_index, milestones_index, closed_states, custom_fields, textile_converter)
         for i in issues)
 
     # create issues
