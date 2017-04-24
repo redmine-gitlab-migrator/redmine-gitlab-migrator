@@ -1,13 +1,9 @@
 Redmine to Gitlab migrator
 ==========================
 
-[![Build Status](https://travis-ci.org/oasiswork/redmine-gitlab-migrator.svg?branch=master)](https://travis-ci.org/oasiswork/redmine-gitlab-migrator) [![PyPI version](https://badge.fury.io/py/redmine-gitlab-migrator.svg)](https://badge.fury.io/py/redmine-gitlab-migrator)
+[![Build Status](https://travis-ci.org/matejzero/redmine-gitlab-migrator.svg?branch=master)](https://travis-ci.org/matejzero/redmine-gitlab-migrator)
 
 Migrate code projects from Redmine to Gitlab, keeping issues/milestones/metadata
-
-*Note: although certainly not bugfree, this tool has been used at @oasiswork
- to migrate 30+ projects with 1000+ issues, and some attention is paid to
- keeping data.*
 
 Does
 ----
@@ -25,8 +21,12 @@ Does
   - issues/notes original dates, but as comments
   - issue attachements
   - issue related changesets
-  - issues custom fields (if specified) 
+  - issues custom fields (if specified)
   - relations including children and parent (although gitlab model for relations is simpler)
+  - keep creation/edit dates as metadata
+  - remember who closed the issue
+  - convert Redmine's textile format issues to GitLab's markdown
+  - possible to map to different users in GitLab
 - Migration of Versions/Roadmaps keeping:
   - issues composing the version
   - statuses & due dates
@@ -42,11 +42,9 @@ Does not
 - Migrate the whole redmine installation at once, because namespacing is different in
   redmine and gitlab
 - Archive the redmine project for you
-- Keep creation/edit dates as metadata
 - Keep "watchers" on tickets (gitlab API v3 does not expose it)
 - Keep dates/times as metadata
 - Keep track of issue relations orientation (no such notion on gitlab)
-- Remember who closed the issue
 - Migrate tags ([redmine_tags](https://www.redmine.org/plugins/redmine_tags)
   plugin), as they are not exposed in gitlab API
 
@@ -62,7 +60,7 @@ Requires
 - Already synced users (those required in the project you are migrating)
 
 (Original version was developed/tested around redmine 2.5.2, gitlab 8.2.0, python 3.4)
-(Updated version was developed/tested around redmine 2.1.2, gitlab 8.12.1, python 3.4)
+(Updated version was developed/tested around redmine 2.4.3, gitlab 9.0.4, python 3.6)
 
 
 Let's go
@@ -128,7 +126,7 @@ Note that your issue titles will be annotated with the original redmine issue
 ID, like *-RM-1186-MR-logging*. This annotation will be used (and removed) by
 the next step.
 
-At least redmine 2.1.2 has no closed_on field, so you have to specify the names of the states which define closed issues. 
+At least redmine 2.1.2 has no closed_on field, so you have to specify the names of the states which define closed issues.
 defaults to closed,rejected
 
     --closed-states closed,rejected,wontfix
@@ -136,7 +134,7 @@ defaults to closed,rejected
 If you want to migrate redmine custom fields (as description), you can specify
 
     --custom-fields Customer,ZendeskIssueId
- 
+
 If you're using SSL with self signed cerificates and get an *requests.exceptions.SSLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed (_ssl.c:600)* error, you can disable certificate validation with
 
     --no-verify
