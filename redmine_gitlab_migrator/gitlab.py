@@ -44,6 +44,10 @@ class GitlabInstance:
         """
         return {i['username']: i for i in self.get_all_users()}
 
+    def get_group_members(self, group_id):
+        return self.api.get('{}/groups/{}/members'.format(self.url, group_id))
+
+
     def check_users_exist(self, usernames):
         """ Returns True if all users exist
         """
@@ -79,10 +83,13 @@ class GitlabProject(Project):
         for project_attributes in projects_info:
             if project_attributes.get('path_with_namespace') == path_with_namespace:
                 projectId = project_attributes.get('id')
+                if project_attributes.get('namespace').get('kind') == 'group':
+                    groupId = project_attributes.get('namespace').get('id')
 
         self.project_id = projectId
         if projectId == -1 :
             raise ValueError('Could not get project_id for path_with_namespace: {}'.format(path_with_namespace))
+        self.group_id = groupId
 
         self.api_url = (
             '{base_url}api/v3/projects/'.format(
@@ -190,7 +197,12 @@ class GitlabProject(Project):
         return self.api.get('{}/issues'.format(self.api_url))
 
     def get_members(self):
-        return self.api.get('{}/members'.format(self.api_url))
+        project_members = self.api.get('{}/members'.format(self.api_url))
+        if self.group_id:
+            group_members = self.get_instance().get_group_members(self.group_id)
+            return project_members + group_members
+        else:
+            return project_members
 
     def get_members_index(self):
         """ Returns dict index of users (by login)
