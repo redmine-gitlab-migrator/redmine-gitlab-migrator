@@ -192,6 +192,11 @@ class GitlabProject(Project):
     def get_members(self):
         return self.api.get('{}/members'.format(self.api_url))
 
+    def get_members_index(self):
+        """ Returns dict index of users (by login)
+        """
+        return {i['username']: i for i in self.get_members()}
+
     def get_milestones(self):
         if not hasattr(self, '_cache_milestones'):
             self._cache_milestones = self.api.get(

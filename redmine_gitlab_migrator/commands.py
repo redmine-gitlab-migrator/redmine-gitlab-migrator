@@ -86,6 +86,11 @@ def parse_args():
         help="comma seperated list of redmine custom filds to migrate")
 
     parser_issues.add_argument(
+        '--project-members-only',
+        required=False, action='store_true', default=False,
+        help="get project members instead of all users, useful for gitlab.com")
+
+    parser_issues.add_argument(
         '--keep-id',
         required=False, action='store_true', default=False,
         help="create and delete empty issues for gaps, useful when no ssh is possible (e.g. gitlab.com)")
@@ -148,7 +153,11 @@ def perform_migrate_issues(args):
 
     gitlab_instance = gitlab_project.get_instance()
 
-    gitlab_users_index = gitlab_instance.get_users_index()
+    if (args.project_members_only):
+        gitlab_users_index = gitlab_project.get_members_index()
+    else:
+        gitlab_users_index = gitlab_instance.get_users_index()
+
     redmine_users_index = redmine_project.get_users_index()
     milestones_index = gitlab_project.get_milestones_index()
     textile_converter = TextileConverter()
