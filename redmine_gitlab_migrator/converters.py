@@ -2,15 +2,21 @@
 """
 
 import logging
+import yaml
 
 log = logging.getLogger(__name__)
+user_dict = None
 
 # Utils
 
+def load_user_dict(path):
+    global user_dict
+    with open(path, 'r') as stream:
+        user_dict = yaml.load(stream)
 
 def redmine_username_to_gitlab_username(redmine_username):
-    if redmine_username == 'usermz':
-        return 'matejz'
+    if user_dict is not None and redmine_username in user_dict:
+        return user_dict[redmine_username]
     return redmine_username
 
 

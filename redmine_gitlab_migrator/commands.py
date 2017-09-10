@@ -6,7 +6,7 @@ import sys
 
 from redmine_gitlab_migrator.redmine import RedmineProject, RedmineClient
 from redmine_gitlab_migrator.gitlab import GitlabProject, GitlabClient
-from redmine_gitlab_migrator.converters import convert_issue, convert_version
+from redmine_gitlab_migrator.converters import convert_issue, convert_version, load_user_dict
 from redmine_gitlab_migrator.logger import setup_module_logging
 from redmine_gitlab_migrator.wiki import TextileConverter
 from redmine_gitlab_migrator import sql
@@ -16,7 +16,6 @@ from redmine_gitlab_migrator import sql
 """
 
 log = logging.getLogger(__name__)
-
 
 class CommandError(Exception):
     """ An error that will nicely pop up to user and stops program
@@ -86,6 +85,11 @@ def parse_args():
         help="comma seperated list of redmine custom filds to migrate")
 
     parser_issues.add_argument(
+        '--user-dict',
+        required=False,
+        help="file path with redmine user mapping to gitlab user, in YAML format")
+
+    parser_issues.add_argument(
         '--project-members-only',
         required=False, action='store_true', default=False,
         help="get project members instead of all users, useful for gitlab.com")
@@ -136,7 +140,6 @@ def check_origin_milestone(redmine_project, gitlab_project):
 
 
 def perform_migrate_issues(args):
-
     closed_states = []
     if (args.closed_states):
         closed_states = args.closed_states.split(',')
@@ -144,6 +147,9 @@ def perform_migrate_issues(args):
     custom_fields = []
     if (args.custom_fields):
         custom_fields = args.custom_fields.split(',')
+
+    if (args.user_dict is not None):
+        load_user_dict(args.user_dict)
 
     redmine = RedmineClient(args.redmine_key, args.no_verify)
     gitlab = GitlabClient(args.gitlab_key, args.no_verify)
