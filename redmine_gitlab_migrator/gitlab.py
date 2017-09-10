@@ -159,6 +159,10 @@ class GitlabProject(Project):
 
         return issue
 
+    def delete_issue(self, iid):
+        issue_url = '{}/issues/{}'.format(self.api_url, iid)
+        self.api.delete(issue_url)
+
     def create_milestone(self, data, meta):
         """ High-level milestone creation
 

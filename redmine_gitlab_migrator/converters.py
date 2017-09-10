@@ -141,7 +141,7 @@ def custom_fields_to_string(custom_fields, custom_fields_include):
 # Convertor
 
 def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_user_index,
-                  gitlab_milestones_index, closed_states, custom_fields_include, textile_converter):
+                  gitlab_milestones_index, closed_states, custom_fields_include, textile_converter, keep_title):
 
     issue_state = redmine_issue['status']['name']
 
@@ -186,10 +186,13 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
 
     attachments = redmine_issue.get('attachments', [])
     due_date = redmine_issue.get('due_date', None)
+    if keep_title:
+        title = redmine_issue['subject']
+    else:
+        title = '-RM-{}-MR-{}'.format(redmine_issue['id'], redmine_issue['subject'])
 
     data = {
-        'title': '-RM-{}-MR-{}'.format(
-            redmine_issue['id'], redmine_issue['subject']),
+        'title': title,
         'description': '{}\n\n*(from redmine: issue id {}, created on {}{})*\n{}{}{}'.format(
             textile_converter.convert(redmine_issue['description']),
             redmine_issue['id'],
@@ -238,7 +241,7 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
             if assigned_to['name']:
                 data['labels'] = data['labels'] + ',' + assigned_to['name']
 
-    return data, meta
+    return data, meta, redmine_issue['id']
 
 
 def convert_version(redmine_version):

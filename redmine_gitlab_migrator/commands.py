@@ -85,6 +85,11 @@ def parse_args():
         required=False,
         help="comma seperated list of redmine custom filds to migrate")
 
+    parser_issues.add_argument(
+        '--keep-id',
+        required=False, action='store_true', default=False,
+        help="create and delete empty issues for gaps, useful when no ssh is possible (e.g. gitlab.com)")
+
     return parser.parse_args()
 
 
@@ -158,12 +163,14 @@ def perform_migrate_issues(args):
     log.info('Converting issues')
     issues_data = (
         convert_issue(args.redmine_key,
-            i, redmine_users_index, gitlab_users_index, milestones_index, closed_states, custom_fields, textile_converter)
+            i, redmine_users_index, gitlab_users_index, milestones_index, closed_states, custom_fields, textile_converter,
+            args.keep_id)
         for i in issues)
 
     # create issues
     log.info('Creating gitlab issues')
-    for data, meta in issues_data:
+    last_iid = 0
+    for data, meta, redmine_id in issues_data:
         if args.check:
             milestone_id = data.get('milestone_id', None)
             if milestone_id:
@@ -180,9 +187,21 @@ def perform_migrate_issues(args):
                 len(meta['notes'])))
 
         else:
+            if args.keep_id:
+                try:
+                    while redmine_id > last_iid + 1:
+                        created = gitlab_project.create_issue({'title': 'fake'},
+                                {'uploads': [], 'notes': [], 'sudo_user': meta['sudo_user'], 'must_close': False})
+                        last_iid = created['iid']
+                        gitlab_project.delete_issue(created['id'])
+                        log.info('#{iid} {title}'.format(**created))
+                except:
+                    log.info('create issue "{}" failed'.format('fake'))
+                    raise
 
             try:
                 created = gitlab_project.create_issue(data, meta)
+                last_iid = created['iid']
                 log.info('#{iid} {title}'.format(**created))
             except:
                 log.info('create issue "{}" failed'.format(data['title']))

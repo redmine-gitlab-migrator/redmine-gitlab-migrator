@@ -48,6 +48,9 @@ class APIClient:
     def put(self, *args, **kwargs):
         return self._req(requests.put, *args, **kwargs)
 
+    def delete(self, *args, **kwargs):
+        return self._req(requests.delete, *args, **kwargs)
+
 
 class Project:
     def __init__(self, url, client):
