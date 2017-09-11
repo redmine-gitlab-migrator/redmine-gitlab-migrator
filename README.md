@@ -100,10 +100,15 @@ It doesn't neet to be named the same, you just have to record it's URL (eg:
 ### Create users
 
 Manual operation, project members in gitlab need to have the same username as
-members in redmine. Every member that interacted with the redmine project
-should be added to the gitlab project.
-If a corresponding user can't be found in gitlab, the issue/comment will be
-assigned to the gitlab admin user.
+members in redmine. If you can't use same username in gitlab, e.g. migrating to
+gitlab.com, when migrating issues you can create a mappings file with yaml format,
+mapping redmine login to gitlab login, with
+
+    --user-dict <user dict file>
+
+Every member that interacted with the redmine project should be added to the
+gitlab project. If a corresponding user can't be found in gitlab, the issue/comment
+will be assigned to the gitlab admin user.
 
 ### Migrate Roadmap
 
@@ -126,6 +131,13 @@ Note that your issue titles will be annotated with the original redmine issue
 ID, like *-RM-1186-MR-logging*. This annotation will be used (and removed) by
 the next step.
 
+If you don't have direct access to the gitlab machine, e.g. migrating to gitlab.com,
+and you want to keep redmine id, use --keep-id, it will create and delete issues in
+gitlab for each id gap in redmine project, and won't create issues with different title.
+If you have many issues in your redmine projects, it will be a slow process.
+
+    --keep-id
+
 At least redmine 2.1.2 has no closed_on field, so you have to specify the names of the states which define closed issues.
 defaults to closed,rejected
 
@@ -138,6 +150,13 @@ If you want to migrate redmine custom fields (as description), you can specify
 If you're using SSL with self signed cerificates and get an *requests.exceptions.SSLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed (_ssl.c:600)* error, you can disable certificate validation with
 
     --no-verify
+
+Migrate issues get all users in gitlab. If you have many users in your gitlab, e.g. migrating
+to gitlab.com, it will be a slow process. You can use --project-members-only to query
+project members instead of all users, if corresponding user can't be found in project
+members, the issue/comment will be assigned to the gitlab admin user.
+
+    --project-members-only
 
 ### Migrate Issues ID (iid)
 
