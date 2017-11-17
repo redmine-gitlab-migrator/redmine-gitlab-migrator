@@ -48,7 +48,7 @@ def convert_attachment(redmine_issue_attachment, redmine_api_key):
     return uploads
 
 
-def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index, textile_converter):
+def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index, textile_converter, sudo):
     """ Convert a list of redmine journal entries to gitlab notes
 
     Filters out the empty notes (ex: bare status change)
@@ -64,8 +64,6 @@ def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index,
         journal_notes = entry.get('notes', '')
         if len(journal_notes) > 0:
             journal_notes = textile_converter.convert(journal_notes)
-            body = "{}\n\n*(from redmine: written on {})*".format(
-                journal_notes, entry['created_on'][:10])
             try:
                 author = redmine_uid_to_gitlab_user(
                     entry['user']['id'], redmine_user_index, gitlab_user_index)['username']
@@ -76,8 +74,18 @@ def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index,
                     'Redmine user {} is unknown, attribute note '
                     'to current admin\n'.format(entry['user']))
                 author = None
-            yield ({'body': body, 'created_at': entry['created_on']},
-                   {'sudo_user': author})
+            if not sudo and author is not None:
+                creator_text = " by {}".format(author)
+            else:
+                creator_text = ''
+            body = "{}\n\n*(from redmine: written on {}{})*".format(
+                journal_notes, entry['created_on'][:10], creator_text)
+            data = {'body': body, 'created_at': entry['created_on']}
+            if sudo:
+                meta = {'sudo_user': author}
+            else:
+                meta = {}
+            yield (data, meta)
 
 
 def relations_to_string(relations, children, parent_id, issue_id):
@@ -147,7 +155,7 @@ def custom_fields_to_string(custom_fields, custom_fields_include):
 # Convertor
 
 def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_user_index,
-                  gitlab_milestones_index, closed_states, custom_fields_include, textile_converter, keep_title):
+		  gitlab_milestones_index, closed_states, custom_fields_include, textile_converter, keep_title, sudo):
 
     issue_state = redmine_issue['status']['name']
 
@@ -197,12 +205,28 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     else:
         title = '-RM-{}-MR-{}'.format(redmine_issue['id'], redmine_issue['subject'])
 
+    try:
+        author_login = redmine_uid_to_gitlab_user(
+            redmine_issue['author']['id'], redmine_user_index, gitlab_user_index)['username']
+
+    except KeyError:
+        log.warning(
+            'Redmine issue #{} is anonymous, gitlab issue is attributed '
+            'to current admin\n'.format(redmine_issue['id']))
+        author_login = None
+
+    if not sudo and author_login is not None:
+        creator_text = ' by {}'.format(author_login)
+    else:
+        creator_text = ''
+
     data = {
         'title': title,
-        'description': '{}\n\n*(from redmine: issue id {}, created on {}{})*\n{}{}{}'.format(
+        'description': '{}\n\n*(from redmine: issue id {}, created on {}{}{})*\n{}{}{}'.format(
             textile_converter.convert(redmine_issue['description']),
             redmine_issue['id'],
             redmine_issue['created_on'][:10],
+            creator_text,
             close_text,
             relations_text,
             changesets_text,
@@ -217,23 +241,14 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     if version:
         data['milestone_id'] = gitlab_milestones_index[version['name']]['id']
 
-    try:
-        author_login = redmine_uid_to_gitlab_user(
-            redmine_issue['author']['id'], redmine_user_index, gitlab_user_index)['username']
-
-    except KeyError:
-        log.warning(
-            'Redmine issue #{} is anonymous, gitlab issue is attributed '
-            'to current admin\n'.format(redmine_issue['id']))
-        author_login = None
-
     meta = {
-        'sudo_user': author_login,
         'notes': list(convert_notes(redmine_issue['journals'],
-                                    redmine_user_index, gitlab_user_index, textile_converter)),
+                          redmine_user_index, gitlab_user_index, textile_converter, sudo)),
         'must_close': closed,
         'uploads': list(convert_attachment(a, redmine_api_key) for a in attachments)
     }
+    if sudo:
+        meta['sudo_user'] = author_login
 
     assigned_to = redmine_issue.get('assigned_to', None)
     if assigned_to is not None:

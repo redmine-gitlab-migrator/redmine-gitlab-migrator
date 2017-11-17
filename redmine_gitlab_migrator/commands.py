@@ -104,6 +104,12 @@ def parse_args():
         required=False, action='store_true', default=False,
         help="create and delete empty issues for gaps, useful when no ssh is possible (e.g. gitlab.com)")
 
+    parser_issues.add_argument(
+        '--no-sudo', dest='sudo',
+        action='store_false',
+        default=True,
+        help="do not use sudo")
+
     parser_pages.add_argument(
         '--gitlab-wiki',
         required=True,
@@ -219,7 +225,7 @@ def perform_migrate_issues(args):
     issues_data = (
         convert_issue(args.redmine_key,
             i, redmine_users_index, gitlab_users_index, milestones_index, closed_states, custom_fields, textile_converter,
-            args.keep_id)
+            args.keep_id, args.sudo)
         for i in issues)
 
     # create issues
@@ -244,9 +250,11 @@ def perform_migrate_issues(args):
         else:
             if args.keep_id:
                 try:
+                    fake_meta = {'uploads': [], 'notes': [], 'must_close': False}
+                    if args.sudo:
+                        fake_meta['sudo_user'] = meta['sudo_user']
                     while redmine_id > last_iid + 1:
-                        created = gitlab_project.create_issue({'title': 'fake'},
-                                {'uploads': [], 'notes': [], 'sudo_user': meta['sudo_user'], 'must_close': False})
+                        created = gitlab_project.create_issue({'title': 'fake'}, fake_meta)
                         last_iid = created['iid']
                         gitlab_project.delete_issue(created['id'])
                         log.info('#{iid} {title}'.format(**created))

@@ -21,8 +21,8 @@ class GitlabClient(APIClient):
         result = super().get(*args, **kwargs)
         while (len(result) > 0 and len(result) % self.MAX_PER_PAGE == 0):
             kwargs['params']['page'] += 1
-            result.extend(super().get(*args, **kwargs))	
-        return result 
+            result.extend(super().get(*args, **kwargs))
+        return result
 
     def get_auth_headers(self):
         return {"PRIVATE-TOKEN": self.api_key}
@@ -70,16 +70,16 @@ class GitlabProject(Project):
         self.instance_url = '{}/api/v3'.format(
             self._url_match.group('base_url'))
 
-        # fetch project_id via api, thanks to lewicki-pk 
+        # fetch project_id via api, thanks to lewicki-pk
         # https://github.com/oasiswork/redmine-gitlab-migrator/pull/2
         # but also take int account, that there might be the same project in different namespaces
         path_with_namespace = (
             '{namespace}/{project_name}'.format(
-                **self._url_match.groupdict())) 
+                **self._url_match.groupdict()))
         projectId = -1
 
         projects_info = self.api.get('{}/projects'.format(self.instance_url))
- 
+
         for project_attributes in projects_info:
             if project_attributes.get('path_with_namespace') == path_with_namespace:
                 projectId = project_attributes.get('id')
@@ -109,7 +109,7 @@ class GitlabProject(Project):
 
            log.info('\tuploading {} ({} / {})'.format(u['filename'], u['content_url'], u['content_type']))
 
-           # http://docs.python-requests.org/en/latest/user/quickstart/#post-a-multipart-encoded-file 
+           # http://docs.python-requests.org/en/latest/user/quickstart/#post-a-multipart-encoded-file
            # http://stackoverflow.com/questions/20830551/how-to-streaming-upload-with-python-requests-module-include-file-and-data
            files = [("file", (u['filename'], urlopen(u['content_url']), u['content_type']))]
 
@@ -119,7 +119,7 @@ class GitlabProject(Project):
            except requests.exceptions.HTTPError:
                # gitlab might throw an "ArgumentError (invalid byte sequence in UTF-8)" in production.log
                # if the filename contains special chars like german "umlaute"
-               # in that case we retry with an ascii only filename. 
+               # in that case we retry with an ascii only filename.
                files = [("file", (self.remove_non_ascii(u['filename']), urlopen(u['content_url']), u['content_type']))]
                upload = self.api.post(
                    uploads_url, files=files)
@@ -147,18 +147,24 @@ class GitlabProject(Project):
         if len(uploads_text) > 0:
            data['description'] = "{}\n* Uploads:\n  * {}".format(data['description'], uploads_text)
 
+        headers = {}
+        if 'sudo_user' in meta:
+            headers['SUDO'] = meta['sudo_user']
         issues_url = '{}/issues'.format(self.api_url)
         issue = self.api.post(
-            issues_url, data=data, headers={'SUDO': meta['sudo_user']})
+            issues_url, data=data, headers=headers)
 
         issue_url = '{}/{}'.format(issues_url, issue['id'])
 
         # Handle issues notes
         issue_notes_url = '{}/notes'.format(issue_url, 'notes')
         for note_data, note_meta in meta['notes']:
+            note_headers = {}
+            if 'sudo_user' in note_meta:
+                note_headers['SUDO'] = note_meta['sudo_user']
             self.api.post(
                 issue_notes_url, data=note_data,
-                headers={'SUDO': note_meta['sudo_user']})
+                headers=note_headers)
 
         # Handle closed status
         if meta['must_close']:
