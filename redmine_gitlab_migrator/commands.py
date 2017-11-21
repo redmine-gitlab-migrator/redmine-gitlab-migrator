@@ -105,6 +105,11 @@ def parse_args():
         help="create and delete empty issues for gaps, useful when no ssh is possible (e.g. gitlab.com)")
 
     parser_issues.add_argument(
+        '--keep-title',
+        required=False, action='store_true', default=False,
+        help="migrate issues with same title, useful when no ssh is possible (e.g. gitlab.com) and don't need to keep id (faster)")
+
+    parser_issues.add_argument(
         '--initial-id',
         required=False,
         help="Initial issue ID, to skip some issues")
@@ -232,7 +237,7 @@ def perform_migrate_issues(args):
     issues_data = (
         convert_issue(args.redmine_key,
             i, redmine_users_index, gitlab_users_index, milestones_index, closed_states, custom_fields, textile_converter,
-            args.keep_id, args.sudo)
+            args.keep_id or args.keep_title, args.sudo)
         for i in issues)
 
     # create issues
