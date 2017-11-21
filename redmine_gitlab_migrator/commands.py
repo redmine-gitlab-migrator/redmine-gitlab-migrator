@@ -105,10 +105,15 @@ def parse_args():
         help="create and delete empty issues for gaps, useful when no ssh is possible (e.g. gitlab.com)")
 
     parser_issues.add_argument(
+        '--initial-id',
+        required=False,
+        help="Initial issue ID, to skip some issues")
+
+    parser_issues.add_argument(
         '--no-sudo', dest='sudo',
         action='store_false',
         default=True,
-        help="do not use sudo")
+        help="do not use sudo, use if user is not admin (e.g. gitlab.com)")
 
     parser_pages.add_argument(
         '--gitlab-wiki',
@@ -219,6 +224,8 @@ def perform_migrate_issues(args):
     # get issues
     log.info('Getting redmine issues')
     issues = redmine_project.get_all_issues()
+    if args.initial_id:
+        issues = [issue for issue in issues if int(args.initial_id) < issue['id']]
 
     # convert issues
     log.info('Converting issues')
@@ -230,7 +237,7 @@ def perform_migrate_issues(args):
 
     # create issues
     log.info('Creating gitlab issues')
-    last_iid = 0
+    last_iid = int(args.initial_id or 1) - 1
     for data, meta, redmine_id in issues_data:
         if args.check:
             milestone_id = data.get('milestone_id', None)
