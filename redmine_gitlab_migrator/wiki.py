@@ -24,8 +24,11 @@ class TextileConverter():
         self.regexWarningMacro = re.compile(r'\{\{warning\((.*?)\)\}\}')
         self.regexImportantMacro = re.compile(r'\{\{important\((.*?)\)\}\}')
         self.regexAnyMacro = re.compile(r'\{\{(.*)\}\}')
+        self.regexCodeBlock = re.compile(r'\A  ((.|\n)*)', re.MULTILINE)
 
     def convert(self, text):
+        text = '\n\n'.join([re.sub(self.regexCodeBlock, r'<pre>\1</pre>', block) for block in text.split('\n\n')])
+
         # convert from textile to markdown
         text = pypandoc.convert(text, 'markdown_strict', format='textile')
 
@@ -66,7 +69,7 @@ class WikiPageConverter():
     * make all wiki pages filenames lower-case and fix all links
     * tables are sometimes not converted correctly.
     * fix anything else that pandoc does not convert correctly.
-    
+
     NOTE: This was tested with pandoc 1.17.0.2 - it may not work as nice
           (or badly? :-)) with other versions.
 
