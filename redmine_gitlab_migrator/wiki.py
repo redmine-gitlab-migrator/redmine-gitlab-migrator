@@ -30,7 +30,7 @@ class TextileConverter():
         text = '\n\n'.join([re.sub(self.regexCodeBlock, r'<pre>\1</pre>', block) for block in text.split('\n\n')])
 
         # convert from textile to markdown
-        text = pypandoc.convert(text, 'markdown_strict', format='textile')
+        text = pypandoc.convert_text(text, 'markdown_strict', format='textile')
 
         # pandoc does not convert everything, notably the [[link|text]] syntax
         # is not handled. So let's fix that.
