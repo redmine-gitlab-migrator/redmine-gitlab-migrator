@@ -230,7 +230,7 @@ def perform_migrate_issues(args):
     log.info('Getting redmine issues')
     issues = redmine_project.get_all_issues()
     if args.initial_id:
-        issues = [issue for issue in issues if int(args.initial_id) < issue['id']]
+        issues = [issue for issue in issues if int(args.initial_id) <= issue['id']]
 
     # convert issues
     log.info('Converting issues')
