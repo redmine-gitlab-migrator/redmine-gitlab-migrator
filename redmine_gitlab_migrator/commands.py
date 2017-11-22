@@ -171,7 +171,7 @@ def check_origin_milestone(redmine_project, gitlab_project):
     return len(redmine_project.get_versions()) > 0
 
 def perform_migrate_pages(args):
-    redmine = RedmineClient(args.redmine_key)
+    redmine = RedmineClient(args.redmine_key, args.no_verify)
     redmine_project = RedmineProject(args.redmine_project_url, redmine)
 
     # Get copy of GitLab wiki repository
