@@ -17,8 +17,8 @@ class TextileConverter():
             exit(1)
 
         # precompile regular expressions
-        self.regexWikiLinkWithText = re.compile(r'\\\[\\\[\s*(.*?)\s*\|\s*(.*?)\s*\\\]\\\]')
-        self.regexWikiLinkWithoutText = re.compile(r'\\\[\\\[\s*(.*?)\s*\\\]\\\]')
+        self.regexWikiLinkWithText = re.compile(r'\\\[\\\[\s*([^\]]*?)\s*\|\s*([^\]]*?)\s*\\\]\\\]')
+        self.regexWikiLinkWithoutText = re.compile(r'\\\[\\\[\s*([^\]]*?)\s*\\\]\\\]')
         self.regexTipMacro = re.compile(r'\{\{tip\((.*?)\)\}\}')
         self.regexNoteMacro = re.compile(r'\{\{note\((.*?)\)\}\}')
         self.regexWarningMacro = re.compile(r'\{\{warning\((.*?)\)\}\}')
