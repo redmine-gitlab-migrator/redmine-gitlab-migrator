@@ -28,11 +28,12 @@ class TextileConverter():
 
     def wiki_link(self, match):
         name = match.group(1)
-        text = match.group(2)
-        if text is None:
+        if len(match.groups()) > 1:
+            text = match.group(2)
+        else:
             text = name
 
-        name = normalize(name).replace(' ', '_')
+        name = self.normalize(name).replace(' ', '_')
         return '[{}]({})'.format(text, name)
 
     def normalize(self, title):
@@ -53,10 +54,10 @@ class TextileConverter():
         # is not handled. So let's fix that.
 
         # [[ wikipage | link_text ]] -> [link_text](wikipage)
-        text = re.sub(self.regexWikiLinkWithText, r'[\2](\1)', text, re.MULTILINE | re.DOTALL)
+        text = re.sub(self.regexWikiLinkWithText, self.wiki_link, text, re.MULTILINE | re.DOTALL)
 
         # [[ link_url ]] -> [link_url](link_url)
-        text = re.sub(self.regexWikiLinkWithoutText, r'[\1](\1)', text, re.MULTILINE | re.DOTALL)
+        text = re.sub(self.regexWikiLinkWithoutText, self.wiki_link, text, re.MULTILINE | re.DOTALL)
 
         # nested lists, fix at least the common issues
         text = text.replace("    \\#\\*", "    -")
