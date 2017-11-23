@@ -26,6 +26,23 @@ class TextileConverter():
         self.regexAnyMacro = re.compile(r'\{\{(.*)\}\}')
         self.regexCodeBlock = re.compile(r'\A  ((.|\n)*)', re.MULTILINE)
 
+    def wiki_link(self, match):
+        name = match.group(1)
+        text = match.group(2)
+        if text is None:
+            text = name
+
+        name = normalize(name)
+        return '[{}]({})'.format(text, name)
+
+    def normalize(self, title):
+        title = title.replace("ß", "ss")
+        title = title.replace("ä", "ae")
+        title = title.replace("ö", "oe")
+        title = title.replace("ü", "ue")
+        title = unicodedata.normalize('NFD', title).encode('ascii', 'ignore').decode('ascii')
+        return title
+
     def convert(self, text):
         text = '\n\n'.join([re.sub(self.regexCodeBlock, r'<pre>\1</pre>', block) for block in text.split('\n\n')])
 
@@ -88,21 +105,10 @@ class WikiPageConverter():
             log.error('You need at least pandoc 1.17.0, download from http://pandoc.org/installing.html')
             exit(1)
 
-        # precompile regular expressions
-        self.regexWikiLinkWithText = re.compile(r'\\\[\\\[\s*(.*?)\s*\|\s*(.*?)\s*\\\]\\\]')
-        self.regexWikiLinkWithoutText = re.compile(r'\\\[\\\[\s*(.*?)\s*\\\]\\\]')
-        self.regexTipMacro = re.compile(r'\{\{tip\((.*?)\)\}\}')
-        self.regexNoteMacro = re.compile(r'\{\{note\((.*?)\)\}\}')
-        self.regexWarningMacro = re.compile(r'\{\{warning\((.*?)\)\}\}')
-        self.regexImportantMacro = re.compile(r'\{\{important\((.*?)\)\}\}')
-        self.regexAnyMacro = re.compile(r'\{\{(.*)\}\}')
+        self.textile_converter = TextileConverter()
 
     def convert(self, redmine_page):
-        title = redmine_page["title"].replace("ß", "ss")
-        title = title.replace("ä", "ae")
-        title = title.replace("ö", "oe")
-        title = title.replace("ü", "ue")
-        title = unicodedata.normalize('NFD', title).encode('ascii', 'ignore').decode('ascii')
+        title = self.textile_converter.normalize(redmine_page["title"])
         print("Converting {} ({} version {})".format(title, redmine_page["title"], redmine_page["version"]))
 
         text = redmine_page["text"]
@@ -118,35 +124,7 @@ class WikiPageConverter():
         text = text.replace("[[PageOutline]]", "")
         text = text.replace("{{>toc}}", "")
 
-        # convert from textile to markdown
-        text = pypandoc.convert(text, 'markdown_strict', format='textile')
-
-        # create another copy
-        file_name = title + ".output"
-        with open(self.repo_path + "/" + file_name, mode='w') as fd:
-            print(text, file=fd)
-
-        # pandoc does not convert everything, notably the [[link|text]] syntax
-        # is not handled. So let's fix that.
-
-        # [[ wikipage | link_text ]] -> [link_text](wikipage)
-        text = re.sub(self.regexWikiLinkWithText, r'[\2](\1)', text, re.MULTILINE | re.DOTALL)
-
-        # [[ link_url ]] -> [link_url](link_url)
-        text = re.sub(self.regexWikiLinkWithoutText, r'[\1](\1)', text, re.MULTILINE | re.DOTALL)
-
-        # nested lists, fix at least the common issues
-        text = text.replace("    \\#\\*", "    -")
-        text = text.replace("    \\*\\#", "    1.")
-
-        # wiki note macros
-        text = re.sub(self.regexTipMacro, r'---\n**TIP**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
-        text = re.sub(self.regexNoteMacro, r'---\n**NOTE**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
-        text = re.sub(self.regexWarningMacro, r'---\n**WARNING**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
-        text = re.sub(self.regexImportantMacro, r'---\n**IMPORTANT**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
-
-        # all other macros
-        text = re.sub(self.regexAnyMacro, r'\1', text, re.MULTILINE | re.DOTALL)
+        text = self.textile_converter.convert(text)
 
         # save file with author/date
         file_name = title + ".md"
