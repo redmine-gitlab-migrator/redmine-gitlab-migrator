@@ -3,6 +3,7 @@ from git import Repo, Actor
 import pypandoc
 import logging
 import re
+import unicodedata
 
 log = logging.getLogger(__name__)
 
@@ -16,7 +17,6 @@ class TextileConverter():
             exit(1)
 
         # precompile regular expressions
-        self.regexNonASCII = re.compile(r'[^a-zA-Z_0-9]')
         self.regexWikiLinkWithText = re.compile(r'\\\[\\\[\s*(.*?)\s*\|\s*(.*?)\s*\\\]\\\]')
         self.regexWikiLinkWithoutText = re.compile(r'\\\[\\\[\s*(.*?)\s*\\\]\\\]')
         self.regexTipMacro = re.compile(r'\{\{tip\((.*?)\)\}\}')
@@ -89,7 +89,6 @@ class WikiPageConverter():
             exit(1)
 
         # precompile regular expressions
-        self.regexNonASCII = re.compile(r'[^a-zA-Z_0-9]')
         self.regexWikiLinkWithText = re.compile(r'\\\[\\\[\s*(.*?)\s*\|\s*(.*?)\s*\\\]\\\]')
         self.regexWikiLinkWithoutText = re.compile(r'\\\[\\\[\s*(.*?)\s*\\\]\\\]')
         self.regexTipMacro = re.compile(r'\{\{tip\((.*?)\)\}\}')
@@ -103,7 +102,7 @@ class WikiPageConverter():
         title = title.replace("ä", "ae")
         title = title.replace("ö", "oe")
         title = title.replace("ü", "ue")
-        title = re.sub(self.regexNonASCII, r"_", title)
+        title = unicodedata.normalize('NFD', title).encode('ascii', 'ignore').decode('ascii')
         print("Converting {} ({} version {})".format(title, redmine_page["title"], redmine_page["version"]))
 
         text = redmine_page["text"]
