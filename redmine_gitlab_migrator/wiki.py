@@ -32,7 +32,7 @@ class TextileConverter():
         if text is None:
             text = name
 
-        name = normalize(name)
+        name = normalize(name).replace(' ', '_')
         return '[{}]({})'.format(text, name)
 
     def normalize(self, title):
