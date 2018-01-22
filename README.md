@@ -1,7 +1,7 @@
 Redmine to Gitlab migrator
 ==========================
 
-[![Build Status](https://travis-ci.org/matejzero/redmine-gitlab-migrator.svg?branch=master)](https://travis-ci.org/matejzero/redmine-gitlab-migrator)
+[![Build Status](https://travis-ci.org/redmine-gitlab-migrator/redmine-gitlab-migrator.svg?branch=master)](https://travis-ci.org/redmine-gitlab-migrator/redmine-gitlab-migrator)
 
 Migrate code projects from Redmine to Gitlab, keeping issues/milestones/metadata
 
