@@ -127,8 +127,9 @@ class RedmineProject(Project):
                 user_ids.add(entry['user']['id'])
 
         for i in user_ids:
-            # The anonymous user is not really part of the project... // ids are groups defined on our redmine instance
-            if i not in [ANONYMOUS_USER_ID, 35, 36, 37, 39, 52]:
+            # The anonymous user is not really part of the project...
+            # You may want to add Group IDs such as [ANONYMOUS_USER_ID, 324, 234, ...] if necessary
+            if i not in [ANONYMOUS_USER_ID]:
                 users.append(self.api.get('{}/users/{}.json'.format(
                     self.instance_url, i)))
         return users
