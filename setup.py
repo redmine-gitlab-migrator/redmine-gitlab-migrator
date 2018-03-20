@@ -19,7 +19,12 @@ setup(
     license='GPL',
     url='https://github/oasiswork/migrate-redmine-to-gitlab/',
     packages=['redmine_gitlab_migrator'],
-    install_requires=['requests'],
+    install_requires=[
+        'requests', 
+        'gitpython', 
+        'yaml', 
+        'pypandoc',
+    ],
     entry_points={
         'console_scripts': [
             'migrate-rg = redmine_gitlab_migrator.commands:main'
