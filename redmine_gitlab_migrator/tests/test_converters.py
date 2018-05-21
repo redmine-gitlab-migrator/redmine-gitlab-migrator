@@ -3,6 +3,7 @@ import unittest
 from .fake import JOHN, JACK, REDMINE_ISSUE_1439, REDMINE_ISSUE_1732
 from redmine_gitlab_migrator.converters import (
     convert_issue, convert_version, relations_to_string)
+from redmine_gitlab_migrator.wiki import TextileConverter
 
 
 class ConvertorTestCase(unittest.TestCase):
@@ -36,24 +37,29 @@ class ConvertorTestCase(unittest.TestCase):
     def test_closed_issue(self):
         redmine_api_key = '<redmine_api_key>'
         redmine_issue = REDMINE_ISSUE_1732
-        gitlab_issue, meta = convert_issue(
-            redmine_api_key, redmine_issue, self.redmine_user_index, self.gitlab_users_idx, {}, ['closed', 'rejected'], ['customer'])
+        textile_converter = TextileConverter()
+        gitlab_issue, meta, redmine_id = convert_issue(
+            redmine_api_key, redmine_issue, self.redmine_user_index, self.gitlab_users_idx, {}, ['closed', 'rejected'], ['customer'],
+            textile_converter, False, True)
         self.assertEqual(gitlab_issue, {
             'title': '-RM-1732-MR-Update doc for v1',
-            'description': 'The doc is a bit old\n\n*(from redmine: created on 2015-08-21, closed on 2015-09-09)*\n',
-            'labels': ['Evolution'],
+            'created_at': '2015-08-21T13:29:41Z',
+            'description': 'The doc is a bit old\n\n\n*(from redmine: issue id 1732, created on 2015-08-21, closed on 2015-09-09)*\n',
+            'labels': 'Evolution,Fixed,Urgent',
+            'due_date': None,
             'assignee_id': JOHN['id'],
         })
         self.assertEqual(meta, {
-            'sudo_user': JACK['username'],
             'notes': [
                 ({'body': 'Appliqué par commit '
                   'commit:66cbf9571ed501c6d38a5978f8a27e7b1aa35268.'
-                  '\n\n*(from redmine: written on 2015-09-09)*'},
+                  '\n\n\n*(from redmine: written on 2015-09-09)*',
+                  'created_at': '2015-09-09T13:31:16Z'},
                  {'sudo_user': 'john_smith'})
                 # empty notes should not be kept
             ],
             'must_close': True,
+            'sudo_user': 'jack_smith',
             'uploads': []
         })
 
@@ -61,14 +67,17 @@ class ConvertorTestCase(unittest.TestCase):
         redmine_api_key = '<redmine_api_key>'
         redmine_issue = REDMINE_ISSUE_1439
         milestone_index = {'v0.11': {'id': 3, 'title': 'v0.11'}}
-        gitlab_issue, meta = convert_issue(
+        textile_converter = TextileConverter()
+        gitlab_issue, meta, redmine_id = convert_issue(
             redmine_api_key, redmine_issue, self.redmine_user_index, self.gitlab_users_idx,
-            milestone_index, ['closed', 'rejected'], ['customer'])
+            milestone_index, ['closed', 'rejected'], ['customer'], textile_converter, False, True)
 
         self.assertEqual(gitlab_issue, {
             'title': '-RM-1439-MR-Support SSL',
-            'description': '\n\n*(from redmine: created on 2015-04-03)*\n\n* Relations:\n  * relates #1430',
-            'labels': ['Evolution'],
+            'description': '\n\n\n*(from redmine: issue id 1439, created on 2015-04-03)*\n\n* Relations:\n  * relates #1430',
+            'due_date': None,
+            'created_at': '2015-04-03T14:56:08Z',
+            'labels': 'Evolution,Nouveau,Normal',
             'milestone_id': 3,
         })
         self.assertEqual(meta, {
