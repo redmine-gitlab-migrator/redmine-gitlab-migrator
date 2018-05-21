@@ -66,6 +66,7 @@ class GitlabProject(Project):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.group_id = None
 
         self.instance_url = '{}/api/v3'.format(
             self._url_match.group('base_url'))
@@ -77,6 +78,7 @@ class GitlabProject(Project):
             '{namespace}/{project_name}'.format(
                 **self._url_match.groupdict()))
         projectId = -1
+        groupId = None
 
         projects_info = self.api.get('{}/projects'.format(self.instance_url))
 
@@ -89,7 +91,8 @@ class GitlabProject(Project):
         self.project_id = projectId
         if projectId == -1 :
             raise ValueError('Could not get project_id for path_with_namespace: {}'.format(path_with_namespace))
-        self.group_id = groupId
+        if groupId:
+            self.group_id = groupId
 
         self.api_url = (
             '{base_url}api/v3/projects/'.format(
