@@ -1,6 +1,6 @@
 language: python
 install:
-  - apt-get install pandoc
+  - sudo apt-get install pandoc
   - pip install pyyaml GitPython pypandoc
 python:
   - "3.5"
