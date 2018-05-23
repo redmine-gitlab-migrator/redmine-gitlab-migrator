@@ -4,6 +4,7 @@ install:
   - wget https://github.com/jgm/pandoc/releases/download/1.17/pandoc-1.17-1-amd64.deb && sudo dpkg -i pandoc-1.17-1-amd64.deb
   - pip install pyyaml GitPython pypandoc
 python:
+  - "3.4"
   - "3.5"
   - "3.6"
 # command to run tests
