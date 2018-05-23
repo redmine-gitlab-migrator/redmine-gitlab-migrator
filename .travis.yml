@@ -1,4 +1,5 @@
 dist: xenial
+sudo: required
 language: python
 install:
   - sudo apt-get install pandoc
