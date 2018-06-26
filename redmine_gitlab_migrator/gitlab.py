@@ -68,7 +68,7 @@ class GitlabProject(Project):
         super().__init__(*args, **kwargs)
         self.group_id = None
 
-        self.instance_url = '{}/api/v3'.format(
+        self.instance_url = '{}/api/v4'.format(
             self._url_match.group('base_url'))
 
         # fetch project_id via api, thanks to lewicki-pk
@@ -95,7 +95,7 @@ class GitlabProject(Project):
             self.group_id = groupId
 
         self.api_url = (
-            '{base_url}api/v3/projects/'.format(
+            '{base_url}api/v4/projects/'.format(
                 **self._url_match.groupdict())) + str(projectId)
 
 
@@ -157,7 +157,7 @@ class GitlabProject(Project):
         issue = self.api.post(
             issues_url, data=data, headers=headers)
 
-        issue_url = '{}/{}'.format(issues_url, issue['id'])
+        issue_url = '{}/{}'.format(issues_url, issue['iid'])
 
         # Handle issues notes
         issue_notes_url = '{}/notes'.format(issue_url, 'notes')
