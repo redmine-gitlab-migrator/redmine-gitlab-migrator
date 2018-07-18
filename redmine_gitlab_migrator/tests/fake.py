@@ -432,7 +432,7 @@ class FakeGitlabClient:
               url.endswith('/projects/brightbox%2Fpuppet/issues')):
             return []
 
-        elif (orl.endswith('/projects/6/members') or	
+        elif (url.endswith('/projects/6/members') or	
               url.endswith('/projects/brightbox%2Fpuppet/members')):
             return []
 
