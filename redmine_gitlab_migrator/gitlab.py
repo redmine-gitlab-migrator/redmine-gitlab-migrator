@@ -62,7 +62,7 @@ class GitlabInstance:
 
 class GitlabProject(Project):
     REGEX_PROJECT_URL = re.compile(
-        r'^(?P<base_url>https?://[^/]+/)(?P<namespace>[\w_/-]+)/(?P<project_name>[\w_-]+)$')
+        r'^(?P<base_url>https?://[^/]+/)(?P<namespace>[\w\._/-]+)/(?P<project_name>[\w\._-]+)$')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
