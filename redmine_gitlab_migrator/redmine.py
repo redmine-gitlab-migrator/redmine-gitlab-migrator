@@ -78,18 +78,31 @@ class RedmineProject(Project):
             return url
 
     def get_all_issues(self):
-        issues = self.api.unpaginated_get(
-            '{}/issues.json?status_id=*'.format(self.public_url))
-        detailed_issues = []
-        # It's impossible to get issue history from list view, so get it from
-        # detail view...
 
-        for issue_id in (i['id'] for i in issues):
-            issue_url = '{}/issues/{}.json?include=journals,watchers,relations,childrens,attachments'.format(
-                self.instance_url, issue_id)
-            detailed_issues.append(self.api.get(issue_url))
+        if not hasattr(self, '_cache_issues'):
 
-        return detailed_issues
+            issues = self.api.unpaginated_get(
+                '{}/issues.json?status_id=*'.format(self.public_url))
+            detailed_issues = []
+            # It's impossible to get issue history from list view, so get it from
+            # detail view...
+
+            for issue_id in sorted(i['id'] for i in issues):
+                issue_url = '{}/issues/{}.json?include=journals,watchers,relations,children,attachments,changesets'.format(
+                    self.instance_url, issue_id)
+                detailed_issues.append(self.api.get(issue_url))
+
+            self._cache_issues = detailed_issues
+
+        return self._cache_issues
+
+    def get_all_pages(self):
+        return self.api.get(
+            '{}/wiki/index.json'.format(self.public_url))
+
+    def get_page(self, title, version):
+        return self.api.get(
+            '{}/wiki/{}/{}.json'.format(self.public_url, title, version))
 
     def get_participants(self):
         """Get participating users (issues authors/owners)
@@ -99,18 +112,24 @@ class RedmineProject(Project):
         """
         user_ids = set()
         users = []
-        # FIXME: cache
+
         for i in self.get_all_issues():
+            journals = i.get('journals', [])
             for i in chain(i.get('watchers', []),
                            [i['author'], i.get('assigned_to', None)]):
 
                 if i is None:
                     continue
                 user_ids.add(i['id'])
+            for entry in journals:
+                if not entry.get('notes', None):
+                    continue
+                user_ids.add(entry['user']['id'])
 
         for i in user_ids:
             # The anonymous user is not really part of the project...
-            if i != ANONYMOUS_USER_ID:
+            # You may want to add Group IDs such as [ANONYMOUS_USER_ID, 324, 234, ...] if necessary
+            if i not in [ANONYMOUS_USER_ID]:
                 users.append(self.api.get('{}/users/{}.json'.format(
                     self.instance_url, i)))
         return users

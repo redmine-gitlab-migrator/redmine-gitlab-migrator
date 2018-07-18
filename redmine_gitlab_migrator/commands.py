@@ -6,8 +6,9 @@ import sys
 
 from redmine_gitlab_migrator.redmine import RedmineProject, RedmineClient
 from redmine_gitlab_migrator.gitlab import GitlabProject, GitlabClient
-from redmine_gitlab_migrator.converters import convert_issue, convert_version
-from redmine_gitlab_migrator.logging import setup_module_logging
+from redmine_gitlab_migrator.converters import convert_issue, convert_version, load_user_dict
+from redmine_gitlab_migrator.logger import setup_module_logging
+from redmine_gitlab_migrator.wiki import TextileConverter, WikiPageConverter
 from redmine_gitlab_migrator import sql
 
 
@@ -15,7 +16,6 @@ from redmine_gitlab_migrator import sql
 """
 
 log = logging.getLogger(__name__)
-
 
 class CommandError(Exception):
     """ An error that will nicely pop up to user and stops program
@@ -33,28 +33,37 @@ def parse_args():
         'issues', help=perform_migrate_issues.__doc__)
     parser_issues.set_defaults(func=perform_migrate_issues)
 
+    parser_pages = subparsers.add_parser(
+        'pages', help=perform_migrate_pages.__doc__)
+    parser_pages.set_defaults(func=perform_migrate_pages)
+
     parser_roadmap = subparsers.add_parser(
         'roadmap', help=perform_migrate_roadmap.__doc__)
     parser_roadmap.set_defaults(func=perform_migrate_roadmap)
+
+    parser_redirect = subparsers.add_parser(
+        'redirect', help=perform_redirect.__doc__)
+    parser_redirect.set_defaults(func=perform_redirect)
 
     parser_iid = subparsers.add_parser(
         'iid', help=perform_migrate_iid.__doc__)
     parser_iid.set_defaults(func=perform_migrate_iid)
 
-    for i in (parser_issues, parser_roadmap):
+    for i in (parser_issues, parser_pages, parser_roadmap, parser_redirect):
         i.add_argument('redmine_project_url')
         i.add_argument(
             '--redmine-key',
             required=True,
             help="Redmine administrator API key")
 
-    for i in (parser_issues, parser_roadmap, parser_iid):
+    for i in (parser_issues, parser_roadmap, parser_iid, parser_redirect):
         i.add_argument('gitlab_project_url')
         i.add_argument(
             '--gitlab-key',
             required=True,
             help="Gitlab administrator API key")
 
+    for i in (parser_issues, parser_pages, parser_roadmap, parser_iid, parser_redirect):
         i.add_argument(
             '--check',
             required=False, action='store_true', default=False,
@@ -65,10 +74,68 @@ def parse_args():
             required=False, action='store_true', default=False,
             help="More output")
 
+        i.add_argument(
+            '--no-verify',
+            required=False, action='store_false', default=True,
+            help="disable SSL certificate verification")
+
+    parser_issues.add_argument(
+        '--closed-states',
+        required=False,
+        help="comma seperated list of redmine states that close an issue, default closed,rejected")
+
+    parser_issues.add_argument(
+        '--custom-fields',
+        required=False,
+        help="comma seperated list of redmine custom filds to migrate")
+
+    parser_issues.add_argument(
+        '--user-dict',
+        required=False,
+        help="file path with redmine user mapping to gitlab user, in YAML format")
+
+    parser_issues.add_argument(
+        '--project-members-only',
+        required=False, action='store_true', default=False,
+        help="get project members instead of all users, useful for gitlab.com")
+
+    parser_issues.add_argument(
+        '--keep-id',
+        required=False, action='store_true', default=False,
+        help="create and delete empty issues for gaps, useful when no ssh is possible (e.g. gitlab.com)")
+
+    parser_issues.add_argument(
+        '--keep-title',
+        required=False, action='store_true', default=False,
+        help="migrate issues with same title, useful when no ssh is possible (e.g. gitlab.com) and don't need to keep id (faster)")
+
+    parser_issues.add_argument(
+        '--initial-id',
+        required=False,
+        help="Initial issue ID, to skip some issues")
+
+    parser_issues.add_argument(
+        '--no-sudo', dest='sudo',
+        action='store_false',
+        default=True,
+        help="do not use sudo, use if user is not admin (e.g. gitlab.com)")
+
+    parser_pages.add_argument(
+        '--gitlab-wiki',
+        required=True,
+        help="Path to local cloned copy of the GitLab Wiki's git repository")
+
+    parser_pages.add_argument(
+        '--no-history',
+        action='store_true',
+        default=False,
+        help="do not convert the history")
+
     return parser.parse_args()
 
 
 def check(func, message, redmine_project, gitlab_project):
+    log.info('{}...'.format(message))
     ret = func(redmine_project, gitlab_project)
     if ret:
         log.info('{}... OK'.format(message))
@@ -78,56 +145,105 @@ def check(func, message, redmine_project, gitlab_project):
 
 
 def check_users(redmine_project, gitlab_project):
-    users = redmine_project.get_participants()
+
+    redmine_users = redmine_project.get_participants()
+    gitlab_users = gitlab_project.get_instance().get_all_users()
+
     # Filter out anonymous user
-    nicks = [i['login'] for i in users if i['login'] != '']
-    log.info('Project users are: {}'.format(', '.join(nicks) + ' '))
+    redmine_user_names = [i['login'] for i in redmine_users if i['login'] != '']
+    gitlab_user_names = set([i['username'] for i in gitlab_users])
 
-    return gitlab_project.get_instance().check_users_exist(nicks)
+    log.info('Redmine users are: {}'.format(', '.join(redmine_user_names) + ' '))
+    log.info('GitLab users are: {}'.format(', '.join(gitlab_user_names) + ' '))
 
+    return gitlab_project.get_instance().check_users_exist(redmine_user_names)
 
 def check_no_issue(redmine_project, gitlab_project):
     return len(gitlab_project.get_issues()) == 0
 
 
-def check_no_milestone(redmine_project, gitlab_project):
-    return len(gitlab_project.get_milestones()) == 0
+# check_no_milestone no longer required (milestone will only be created if not exist)
+#def check_no_milestone(redmine_project, gitlab_project):
+#    return len(gitlab_project.get_milestones()) == 0
 
 
 def check_origin_milestone(redmine_project, gitlab_project):
     return len(redmine_project.get_versions()) > 0
 
+def perform_migrate_pages(args):
+    redmine = RedmineClient(args.redmine_key, args.no_verify)
+    redmine_project = RedmineProject(args.redmine_project_url, redmine)
+
+    # Get copy of GitLab wiki repository
+    wiki = WikiPageConverter(args.gitlab_wiki)
+
+    # convert all pages including history
+    pages = []
+    for page in redmine_project.get_all_pages():
+        print("Collecting " + page["title"])
+        start_version = page["version"] if args.no_history else 1
+        for version in range(start_version, page["version"]+1):
+            try:
+                full_page = redmine_project.get_page(page["title"], version)
+                pages.append(full_page)
+            except:
+                log.error("Error when retrieving " + page["title"] + ", version " + str(version))
+
+    # sort everything by date and convert
+    pages.sort(key=lambda page: page["updated_on"])
+
+    for page in pages:
+        wiki.convert(page)
 
 def perform_migrate_issues(args):
-    redmine = RedmineClient(args.redmine_key)
-    gitlab = GitlabClient(args.gitlab_key)
+    closed_states = []
+    if (args.closed_states):
+        closed_states = args.closed_states.split(',')
+
+    custom_fields = []
+    if (args.custom_fields):
+        custom_fields = args.custom_fields.split(',')
+
+    if (args.user_dict is not None):
+        load_user_dict(args.user_dict)
+
+    redmine = RedmineClient(args.redmine_key, args.no_verify)
+    gitlab = GitlabClient(args.gitlab_key, args.no_verify)
 
     redmine_project = RedmineProject(args.redmine_project_url, redmine)
     gitlab_project = GitlabProject(args.gitlab_project_url, gitlab)
 
     gitlab_instance = gitlab_project.get_instance()
 
-    gitlab_users_index = gitlab_instance.get_users_index()
+    if (args.project_members_only):
+        gitlab_users_index = gitlab_project.get_members_index()
+    else:
+        gitlab_users_index = gitlab_instance.get_users_index()
+
     redmine_users_index = redmine_project.get_users_index()
-
-    checks = [
-        (check_users, 'Required users presence'),
-        (check_no_issue, 'Project has no pre-existing issue'),
-    ]
-    for i in checks:
-        check(
-            *i, redmine_project=redmine_project, gitlab_project=gitlab_project)
-
-    # Get issues
-
-    issues = redmine_project.get_all_issues()
     milestones_index = gitlab_project.get_milestones_index()
+    textile_converter = TextileConverter()
+
+    log.debug('GitLab milestones are: {}'.format(', '.join(milestones_index) + ' '))
+
+    # get issues
+    log.info('Getting redmine issues')
+    issues = redmine_project.get_all_issues()
+    if args.initial_id:
+        issues = [issue for issue in issues if int(args.initial_id) <= issue['id']]
+
+    # convert issues
+    log.info('Converting issues')
     issues_data = (
-        convert_issue(
-            i, redmine_users_index, gitlab_users_index, milestones_index)
+        convert_issue(args.redmine_key,
+            i, redmine_users_index, gitlab_users_index, milestones_index, closed_states, custom_fields, textile_converter,
+            args.keep_id or args.keep_title, args.sudo)
         for i in issues)
 
-    for data, meta in issues_data:
+    # create issues
+    log.info('Creating gitlab issues')
+    last_iid = int(args.initial_id or 1) - 1
+    for data, meta, redmine_id in issues_data:
         if args.check:
             milestone_id = data.get('milestone_id', None)
             if milestone_id:
@@ -142,16 +258,38 @@ def perform_migrate_issues(args):
             log.info('Would create issue "{}" and {} notes.'.format(
                 data['title'],
                 len(meta['notes'])))
-        else:
-            created = gitlab_project.create_issue(data, meta)
-            log.info('#{iid} {title}'.format(**created))
 
+        else:
+            if args.keep_id:
+                try:
+                    fake_meta = {'uploads': [], 'notes': [], 'must_close': False}
+                    if args.sudo:
+                        fake_meta['sudo_user'] = meta['sudo_user']
+                    while redmine_id > last_iid + 1:
+                        created = gitlab_project.create_issue({'title': 'fake'}, fake_meta)
+                        last_iid = created['iid']
+                        gitlab_project.delete_issue(created['id'])
+                        log.info('#{iid} {title}'.format(**created))
+                except:
+                    log.info('create issue "{}" failed'.format('fake'))
+                    raise
+
+            try:
+                created = gitlab_project.create_issue(data, meta)
+                last_iid = created['iid']
+                log.info('#{iid} {title}'.format(**created))
+            except:
+                log.info('create issue "{}" failed'.format(data['title']))
+                raise
 
 def perform_migrate_iid(args):
-    """ Shoud occur after the issues migration
+    """ Should occur after the issues migration
     """
 
-    gitlab = GitlabClient(args.gitlab_key)
+    # access gitlab database with
+    # gitlab-rails dbconsole
+
+    gitlab = GitlabClient(args.gitlab_key, args.no_verify)
     gitlab_project = GitlabProject(args.gitlab_project_url, gitlab)
     gitlab_project_id = gitlab_project.get_id()
 
@@ -179,9 +317,17 @@ def perform_migrate_iid(args):
         exit(1)
 
     if not args.check:
-        sql_cmd = sql.MIGRATE_IID_ISSUES.format(
+
+        # first we change the iid to large values to prevent a
+        # duplicate key value violates unique_constraint "index_issues_on_project_id_and_iid"
+        # KEY (project_id, iid)=(37, 83) already exists
+        sql_cmd1 = sql.UPDATE_IID_ISSUES.format(
             regex=regex_saved_iid, project_id=gitlab_project_id)
-        out = sql.run_query(sql_cmd)
+        out1 = sql.run_query(sql_cmd1)
+
+        sql_cmd2 = sql.MIGRATE_IID_ISSUES.format(
+            regex=regex_saved_iid, project_id=gitlab_project_id)
+        out2 = sql.run_query(sql_cmd2)
 
         try:
             m = re.match(
@@ -196,14 +342,14 @@ def perform_migrate_iid(args):
 
 
 def perform_migrate_roadmap(args):
-    redmine = RedmineClient(args.redmine_key)
-    gitlab = GitlabClient(args.gitlab_key)
+    redmine = RedmineClient(args.redmine_key, args.no_verify)
+    gitlab = GitlabClient(args.gitlab_key, args.no_verify)
 
     redmine_project = RedmineProject(args.redmine_project_url, redmine)
     gitlab_project = GitlabProject(args.gitlab_project_url, gitlab)
 
     checks = [
-        (check_no_milestone, 'Gitlab project has no pre-existing milestone'),
+        #(check_no_milestone, 'Gitlab project has no pre-existing milestone'),
         (check_origin_milestone, 'Redmine project contains versions'),
     ]
     for i in checks:
@@ -221,6 +367,19 @@ def perform_migrate_roadmap(args):
             created = gitlab_project.create_milestone(data, meta)
             log.info("Version {}".format(created['title']))
 
+def perform_redirect(args):
+    redmine = RedmineClient(args.redmine_key, args.no_verify)
+    redmine_project = RedmineProject(args.redmine_project_url, redmine)
+
+    # get issues
+    redmine_issues = redmine_project.get_all_issues()
+
+    print('# uncomment next line to enable RewriteEngine')
+    print('# RewriteEngine On')
+    print('# Redirects from {} to {}'.format(args.redmine_project_url, args.gitlab_project_url))
+
+    for issue in redmine_issues:
+        print('RedirectMatch 301 ^/issues/{}$ {}/issues/{}'.format(issue['id'], args.gitlab_project_url, issue['id']))
 
 def main():
     args = parse_args()

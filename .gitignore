@@ -7,3 +7,5 @@ build/
 .coverage
 .cache
 *.egg-info
+dist/
+.idea/

@@ -11,7 +11,7 @@ except IOError:
 
 setup(
     name='redmine-gitlab-migrator',
-    version='1.0.2',
+    version='1.0.3',
     description='Migrate a redmine project to gitlab',
     long_description=README,
     author='Jocelyn Delalande',
@@ -19,7 +19,7 @@ setup(
     license='GPL',
     url='https://github/oasiswork/migrate-redmine-to-gitlab/',
     packages=['redmine_gitlab_migrator'],
-    install_requires=['requests'],
+    install_requires=['pyyaml', 'requests', 'GitPython', 'pypandoc'],
     entry_points={
         'console_scripts': [
             'migrate-rg = redmine_gitlab_migrator.commands:main'
