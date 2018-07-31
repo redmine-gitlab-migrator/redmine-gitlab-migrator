@@ -7,6 +7,8 @@ from urllib.request import urlopen
 
 from redmine_gitlab_migrator.converters import redmine_username_to_gitlab_username
 
+from json.decoder import JSONDecodeError
+
 log = logging.getLogger(__name__)
 
 class GitlabClient(APIClient):
@@ -177,7 +179,10 @@ class GitlabProject(Project):
 
     def delete_issue(self, iid):
         issue_url = '{}/issues/{}'.format(self.api_url, iid)
-        self.api.delete(issue_url)
+        try:
+            self.api.delete(issue_url)
+        except JSONDecodeError:
+            True
 
     def create_milestone(self, data, meta):
         """ High-level milestone creation
