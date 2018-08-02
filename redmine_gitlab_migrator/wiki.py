@@ -132,7 +132,7 @@ class WikiPageConverter():
         # save file with author/date
         file_name = title + ".md"
         with open(self.repo_path + "/" + file_name, mode='wt', encoding='utf-8') as fd:
-            print(text.replace('\n', "\n").encode('utf-8'), file=fd)
+            print(text.replace('\n', "\n"), file=fd)
 
         # todo: check for attachments
         # todo: upload attachments
