@@ -279,7 +279,7 @@ def convert_version(redmine_version):
     milestone = {
         "title": redmine_version['name'],
         "description": '{}\n\n*(from redmine: created on {})*'.format(
-            redmine_version['description'],
+            redmine_version.get('description', ""),
             redmine_version['created_on'][:10])
     }
     if 'due_date' in redmine_version:
