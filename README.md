@@ -161,6 +161,11 @@ members, the issue/comment will be assigned to the gitlab admin user.
 
     --project-members-only
 
+If you don't have admin access to gitlab instance, e.g. migrating to gitlab.com, sudo_user is not
+allowed, so you have to disable sudo with
+
+    --no-sudo
+
 ### Migrate Issues ID (iid)
 
 You can retain the issues ID from redmine, **this cannot be done via REST
