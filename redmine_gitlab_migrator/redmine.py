@@ -83,7 +83,7 @@ class RedmineProject(Project):
         if not hasattr(self, '_cache_issues'):
 
             issues = self.api.unpaginated_get(
-                '{}/issues.json?status_id=*'.format(self.public_url))
+                '{}/issues.json?subproject_id=1&status_id=*'.format(self.public_url))
             detailed_issues = []
             # It's impossible to get issue history from list view, so get it from
             # detail view...
