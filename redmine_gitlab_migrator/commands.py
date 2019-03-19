@@ -8,7 +8,7 @@ from redmine_gitlab_migrator.redmine import RedmineProject, RedmineClient
 from redmine_gitlab_migrator.gitlab import GitlabProject, GitlabClient
 from redmine_gitlab_migrator.converters import convert_issue, convert_version, load_user_dict
 from redmine_gitlab_migrator.logger import setup_module_logging
-from redmine_gitlab_migrator.wiki import TextileConverter, WikiPageConverter
+from redmine_gitlab_migrator.wiki import TextileConverter, NopConverter, WikiPageConverter
 from redmine_gitlab_migrator import sql
 
 
@@ -82,6 +82,12 @@ def parse_args():
             '--no-verify',
             required=False, action='store_false', default=True,
             help="disable SSL certificate verification")
+
+    for i in (parser_issues, parser_pages):
+        i.add_argument(
+            '--no-textile',
+            required=False, action='store_true',
+            help="Do not perform textile conversion, in case Markdown is used in Redmine")
 
     parser_issues.add_argument(
         '--closed-states',
@@ -182,8 +188,13 @@ def perform_migrate_pages(args):
     redmine = RedmineClient(args.redmine_key, args.no_verify)
     redmine_project = RedmineProject(args.redmine_project_url, redmine)
 
+    if args.no_textile:
+        textile_converter = NopConverter()
+    else:
+        textile_converter = TextileConverter()
+
     # Get copy of GitLab wiki repository
-    wiki = WikiPageConverter(args.gitlab_wiki)
+    wiki = WikiPageConverter(args.gitlab_wiki, textile_converter)
 
     # convert all pages including history
     pages = []
@@ -228,7 +239,10 @@ def perform_migrate_issues(args):
         gitlab_users_index = gitlab_instance.get_users_index()
     redmine_users_index = redmine_project.get_users_index()
     milestones_index = gitlab_project.get_milestones_index()
-    textile_converter = TextileConverter()
+    if args.no_textile:
+        textile_converter = NopConverter()
+    else:
+        textile_converter = TextileConverter()
 
     log.debug('GitLab milestones are: {}'.format(', '.join(milestones_index) + ' '))
     # get issues
