@@ -113,6 +113,11 @@ Every member that interacted with the redmine project should be added to the
 gitlab project. If a corresponding user can't be found in gitlab, the issue/comment
 will be assigned to the gitlab admin user.
 
+```yaml
+redmine_user0: gitlab_user0
+redmine_user1: gitlab_user1
+```
+
 ### Migrate Roadmap
 
 If you do use roadmaps, redmine *versions* will be converted to gitlab
