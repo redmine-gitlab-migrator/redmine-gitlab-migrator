@@ -63,7 +63,7 @@ Requires
 - Already synced users (those required in the project you are migrating)
 
 (Original version was developed/tested around redmine 2.5.2, gitlab 8.2.0, python 3.4)
-(Updated version was developed/tested around redmine 2.4.3, gitlab 9.0.4, python 3.6)
+(Updated version was developed/tested around redmine 3.2.0, gitlab 12.3, python 3.6.8)
 
 
 Let's go
@@ -206,6 +206,12 @@ A bare matter of `git remote set-url && git push`, see git documentation.
 
 Note that gitlab does not support multiple repositories per project, you'll have
 to reorganize your projects if you were using that feature of Redmine.
+
+### Delete all issues from gitlab
+
+Primarily for redos in case something wasn't configured as intended
+
+    migrate-rg delete-issues --debug --gitlab-key xxx https://git.example.com/mygroup/myproject
 
 ### Archive redmine project
 
