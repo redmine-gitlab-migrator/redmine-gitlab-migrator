@@ -53,7 +53,7 @@ Does not
 Requires
 --------
 
-- Python >= 3.4
+- Python >= 3.5
 - gitlab >= 7.0
 - redmine >= 1.3
 - pandoc >= 1.17.0.0
