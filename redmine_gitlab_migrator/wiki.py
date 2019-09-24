@@ -114,11 +114,11 @@ class WikiPageConverter():
                  else 'home')
         print("Converting {} ({} version {})".format(title, redmine_page["title"], redmine_page["version"]))
 
-        text = redmine_page["text"]
+        text = redmine_page.get('text', "")
 
         # create a copy of the original page (for comparison, will not be committed)
         file_name = title + ".textile"
-        with open(self.repo_path + "/" + file_name, mode='w') as fd:
+        with open(self.repo_path + "/" + file_name, mode='wt', encoding='utf-8') as fd:
             print(text, file=fd)
 
         # replace some contents
@@ -131,8 +131,8 @@ class WikiPageConverter():
 
         # save file with author/date
         file_name = title + ".md"
-        with open(self.repo_path + "/" + file_name, mode='w') as fd:
-            print(text, file=fd)
+        with open(self.repo_path + "/" + file_name, mode='wt', encoding='utf-8') as fd:
+            print(text.replace('\n', "\n"), file=fd)
 
         # todo: check for attachments
         # todo: upload attachments

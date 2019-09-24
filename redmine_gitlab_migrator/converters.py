@@ -220,10 +220,11 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     else:
         creator_text = ''
 
+    description = redmine_issue.get('description', "")
     data = {
         'title': title,
         'description': '{}\n\n*(from redmine: issue id {}, created on {}{}{})*\n{}{}{}'.format(
-            textile_converter.convert(redmine_issue['description']),
+            textile_converter.convert(description),
             redmine_issue['id'],
             redmine_issue['created_on'][:10],
             creator_text,
@@ -278,7 +279,7 @@ def convert_version(redmine_version):
     milestone = {
         "title": redmine_version['name'],
         "description": '{}\n\n*(from redmine: created on {})*'.format(
-            redmine_version['description'],
+            redmine_version.get('description', ""),
             redmine_version['created_on'][:10])
     }
     if 'due_date' in redmine_version:

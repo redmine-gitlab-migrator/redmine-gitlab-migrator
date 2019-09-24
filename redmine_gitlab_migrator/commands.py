@@ -268,7 +268,7 @@ def perform_migrate_issues(args):
                     while redmine_id > last_iid + 1:
                         created = gitlab_project.create_issue({'title': 'fake'}, fake_meta)
                         last_iid = created['iid']
-                        gitlab_project.delete_issue(created['id'])
+                        gitlab_project.delete_issue(created['iid'])
                         log.info('#{iid} {title}'.format(**created))
                 except:
                     log.info('create issue "{}" failed'.format('fake'))

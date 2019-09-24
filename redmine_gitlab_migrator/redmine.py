@@ -2,6 +2,7 @@ from itertools import chain
 import re
 
 from . import APIClient, Project
+from requests.exceptions import HTTPError
 
 ANONYMOUS_USER_ID = 2
 
@@ -82,7 +83,7 @@ class RedmineProject(Project):
         if not hasattr(self, '_cache_issues'):
 
             issues = self.api.unpaginated_get(
-                '{}/issues.json?status_id=*'.format(self.public_url))
+                '{}/issues.json?subproject_id=1&status_id=*'.format(self.public_url))
             detailed_issues = []
             # It's impossible to get issue history from list view, so get it from
             # detail view...
@@ -130,8 +131,12 @@ class RedmineProject(Project):
             # The anonymous user is not really part of the project...
             # You may want to add Group IDs such as [ANONYMOUS_USER_ID, 324, 234, ...] if necessary
             if i not in [ANONYMOUS_USER_ID]:
-                users.append(self.api.get('{}/users/{}.json'.format(
-                    self.instance_url, i)))
+                try:
+                  users.append(self.api.get('{}/users/{}.json'.format(
+                      self.instance_url, i)))
+                except HTTPError:
+                  print("unable to retrieve user!")
+
         return users
 
     def get_users_index(self):
