@@ -49,6 +49,10 @@ def parse_args():
         'iid', help=perform_migrate_iid.__doc__)
     parser_iid.set_defaults(func=perform_migrate_iid)
 
+    delete_issues = subparsers.add_parser(
+        'delete-issues', help=perform_delete_issues.__doc__)
+    delete_issues.set_defaults(func=perform_delete_issues)
+
     for i in (parser_issues, parser_pages, parser_roadmap, parser_redirect):
         i.add_argument('redmine_project_url')
         i.add_argument(
@@ -56,14 +60,14 @@ def parse_args():
             required=True,
             help="Redmine administrator API key")
 
-    for i in (parser_issues, parser_roadmap, parser_iid, parser_redirect):
+    for i in (parser_issues, parser_roadmap, parser_iid, parser_redirect, delete_issues):
         i.add_argument('gitlab_project_url')
         i.add_argument(
             '--gitlab-key',
             required=True,
             help="Gitlab administrator API key")
 
-    for i in (parser_issues, parser_pages, parser_roadmap, parser_iid, parser_redirect):
+    for i in (parser_issues, parser_pages, parser_roadmap, parser_iid, parser_redirect, delete_issues):
         i.add_argument(
             '--check',
             required=False, action='store_true', default=False,
@@ -133,7 +137,6 @@ def parse_args():
 
     return parser.parse_args()
 
-
 def check(func, message, redmine_project, gitlab_project):
     log.info('{}...'.format(message))
     ret = func(redmine_project, gitlab_project)
@@ -142,7 +145,6 @@ def check(func, message, redmine_project, gitlab_project):
     else:
         log.error('{}... FAILED'.format(message))
         exit(1)
-
 
 def check_users(redmine_project, gitlab_project):
 
@@ -340,6 +342,18 @@ def perform_migrate_iid(args):
             raise ValueError(
                 'Invalid output from postgres command: "{}"'.format(output))
 
+def perform_delete_issues(args):
+    """ Delete all issues in the gitlab repo
+    """
+    gitlab = GitlabClient(args.gitlab_key, args.no_verify)
+    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab)
+
+    gitlab_issues = gitlab_project.get_issues()
+    log.debug('Got {} issue(s) from gitlab.'.format(len(gitlab_issues)))
+
+    for issue in gitlab_issues:
+        log.debug('delete issue {}'.format(issue['id']))
+        gitlab_project.delete_issue(issue['iid'])
 
 def perform_migrate_roadmap(args):
     redmine = RedmineClient(args.redmine_key, args.no_verify)

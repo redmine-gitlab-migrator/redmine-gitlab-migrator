@@ -82,7 +82,7 @@ class GitlabProject(Project):
         projectId = -1
         groupId = None
 
-        projects_info = self.api.get('{}/projects'.format(self.instance_url))
+        projects_info = self.api.get('{}/projects?owned=true'.format(self.instance_url))
 
         for project_attributes in projects_info:
             if project_attributes.get('path_with_namespace') == path_with_namespace:

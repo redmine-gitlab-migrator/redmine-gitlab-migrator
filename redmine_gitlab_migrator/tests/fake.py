@@ -163,7 +163,7 @@ class FakeGitlabClient:
         if url.endswith('/users'):
             return [JOHN, JACK]
 
-        elif url.endswith('api/v4/projects'):
+        elif url.endswith('api/v4/projects') or url.endswith('api/v4/projects?owned=true'):
             return [{
                 "id": 3,
                 "description": None,
