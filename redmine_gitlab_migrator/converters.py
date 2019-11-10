@@ -12,7 +12,7 @@ user_dict = None
 def load_user_dict(path):
     global user_dict
     with open(path, 'r') as stream:
-        user_dict = yaml.load(stream)
+        user_dict = yaml.load(stream, Loader=yaml.SafeLoader)
 
 def redmine_username_to_gitlab_username(redmine_username):
     if user_dict is not None and redmine_username in user_dict:
@@ -240,7 +240,10 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
 
     version = redmine_issue.get('fixed_version', None)
     if version:
-        data['milestone_id'] = gitlab_milestones_index[version['name']]['id']
+        if version['name'] in gitlab_milestones_index:
+            data['milestone_id'] = gitlab_milestones_index[version['name']]['id']
+        else:
+            print("Milestone {} doesn't exists in GitLab Project but exists in Redmine!".format(version['name']))
 
     meta = {
         'notes': list(convert_notes(redmine_issue['journals'],
@@ -276,13 +279,21 @@ def convert_version(redmine_version):
     :rtype: couple: dict, dict
     :return: a dict describing gitlab-api-style milestone and another for meta
     """
+    created_on_string = ""
+    if 'created_on' not in redmine_version or redmine_version['created_on'] is None:
+        log.warning(
+            "Created date for version {} isn't given in redmine!".format(redmine_version['name'])
+        )
+    else:
+        created_on_string = ": created on {}".format(redmine_version['created_on'][:10])
+        
     milestone = {
         "title": redmine_version['name'],
-        "description": '{}\n\n*(from redmine: created on {})*'.format(
+        "description": '{}\n\n*(from redmine{})*'.format(
             redmine_version.get('description', ""),
-            redmine_version['created_on'][:10])
+            created_on_string)
     }
-    if 'due_date' in redmine_version:
+    if 'due_date' in redmine_version and redmine_version['due_date'] is not None:
         milestone['due_date'] = redmine_version['due_date'][:10]
 
     must_close = redmine_version['status'] == 'closed'
