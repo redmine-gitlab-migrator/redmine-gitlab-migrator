@@ -48,33 +48,35 @@ class TextileConverter():
         text = '\n\n'.join([re.sub(self.regexCodeBlock, r'<pre>\1</pre>', block) for block in text.split('\n\n')])
 
         # convert from textile to markdown
-        text = pypandoc.convert_text(text, 'markdown_strict', format='textile')
+        try:
+            text = pypandoc.convert_text(text, 'markdown_strict', format='textile')
 
-        # pandoc does not convert everything, notably the [[link|text]] syntax
-        # is not handled. So let's fix that.
+            # pandoc does not convert everything, notably the [[link|text]] syntax
+            # is not handled. So let's fix that.
 
-        # [[ wikipage | link_text ]] -> [link_text](wikipage)
-        text = re.sub(self.regexWikiLinkWithText, self.wiki_link, text, re.MULTILINE | re.DOTALL)
+            # [[ wikipage | link_text ]] -> [link_text](wikipage)
+            text = re.sub(self.regexWikiLinkWithText, self.wiki_link, text, re.MULTILINE | re.DOTALL)
 
-        # [[ link_url ]] -> [link_url](link_url)
-        text = re.sub(self.regexWikiLinkWithoutText, self.wiki_link, text, re.MULTILINE | re.DOTALL)
+            # [[ link_url ]] -> [link_url](link_url)
+            text = re.sub(self.regexWikiLinkWithoutText, self.wiki_link, text, re.MULTILINE | re.DOTALL)
 
-        # nested lists, fix at least the common issues
-        text = text.replace("    \\#\\*", "    -")
-        text = text.replace("    \\*\\#", "    1.")
+            # nested lists, fix at least the common issues
+            text = text.replace("    \\#\\*", "    -")
+            text = text.replace("    \\*\\#", "    1.")
 
-        # Redmine is using '>' for blockquote, which is not textile
-        text = text.replace("&gt; ", ">")
+            # Redmine is using '>' for blockquote, which is not textile
+            text = text.replace("&gt; ", ">")
 
-        # wiki note macros
-        text = re.sub(self.regexTipMacro, r'---\n**TIP**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
-        text = re.sub(self.regexNoteMacro, r'---\n**NOTE**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
-        text = re.sub(self.regexWarningMacro, r'---\n**WARNING**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
-        text = re.sub(self.regexImportantMacro, r'---\n**IMPORTANT**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
+            # wiki note macros
+            text = re.sub(self.regexTipMacro, r'---\n**TIP**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
+            text = re.sub(self.regexNoteMacro, r'---\n**NOTE**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
+            text = re.sub(self.regexWarningMacro, r'---\n**WARNING**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
+            text = re.sub(self.regexImportantMacro, r'---\n**IMPORTANT**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
 
-        # all other macros
-        text = re.sub(self.regexAnyMacro, r'\1', text, re.MULTILINE | re.DOTALL)
-
+            # all other macros
+            text = re.sub(self.regexAnyMacro, r'\1', text, re.MULTILINE | re.DOTALL)
+        except RuntimeError as e:
+            return False
         return text
 
 class WikiPageConverter():
