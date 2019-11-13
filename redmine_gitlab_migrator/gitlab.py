@@ -2,6 +2,7 @@ import re
 import logging
 import requests
 from . import APIClient, Project
+import urllib
 from urllib.request import urlopen
 
 from redmine_gitlab_migrator.converters import redmine_username_to_gitlab_username
@@ -119,8 +120,8 @@ class GitlabProject(Project):
            files = []
            try:
                files = [("file", (u['filename'], urlopen(u['content_url']), u['content_type']))]
-           except requests.exceptions.HTTPError as e:
-               log.warn("{} can't upload due to error: {}!".format(u['content_url'], e.response.content))
+           except urllib.error.HTTPError as e:
+               log.warn("{} can't upload due to error: {}!".format(u['content_url'], e))
 
 
            try:
@@ -136,8 +137,8 @@ class GitlabProject(Project):
                    files = [("file", (self.remove_non_ascii(u['filename']), urlopen(u['content_url']), u['content_type']))]
                    upload = self.api.post(uploads_url, files=files)
                    l.append('{} {}'.format(upload['markdown'], u['description']))
-               except requests.exceptions.HTTPError as e:
-                   log.warn("{} can't upload due to error: {}!".format(u['content_url'], e.response.content))
+               except urllib.error.HTTPError as e:
+                   log.warn("{} can't upload due to error: {}!".format(u['content_url'], e))
 
 
         return "\n  * ".join(l)
