@@ -25,6 +25,10 @@ class TextileConverter():
         self.regexImportantMacro = re.compile(r'\{\{important\((.*?)\)\}\}')
         self.regexAnyMacro = re.compile(r'\{\{(.*)\}\}')
         self.regexCodeBlock = re.compile(r'\A  ((.|\n)*)', re.MULTILINE)
+        self.regexCollapse = re.compile(r'({{collapse\s?\(([^)]+)\))(.*)(}})', re.MULTILINE | re.DOTALL)
+        self.regexParagraph = re.compile(r'p(\(+|(\)+)?>?|=)?\.', re.MULTILINE | re.DOTALL)
+        self.regexCodeHighlight = re.compile(r'(<code\s?(class=\"(.*)\")?>).*(</code>)', re.MULTILINE | re.DOTALL)
+        self.regexAttachment = re.compile(r'attachment:[\'\"“”‘’„”«»](.*)[\'\"“”‘’„”«»]', re.MULTILINE | re.DOTALL)
 
     def wiki_link(self, match):
         name = match.group(1)
@@ -46,6 +50,14 @@ class TextileConverter():
 
     def convert(self, text):
         text = '\n\n'.join([re.sub(self.regexCodeBlock, r'<pre>\1</pre>', block) for block in text.split('\n\n')])
+
+        collapseResults = re.findall(self.regexCollapse, text)
+        if len(collapseResults) > 0:
+            for i in range(0, len(collapseResults)):
+                text = text.replace(collapseResults[i][0], "<details>")
+                text = text.replace(collapseResults[i][2], "<summary>{}</summary> \n\n{}".format(collapseResults[i][1], collapseResults[i][2]))
+                text = text.replace(collapseResults[i][3], "</details>")
+        text = re.sub(self.regexParagraph, "", text)
 
         # convert from textile to markdown
         try:
@@ -75,6 +87,16 @@ class TextileConverter():
 
             # all other macros
             text = re.sub(self.regexAnyMacro, r'\1', text, re.MULTILINE | re.DOTALL)
+
+            # attachments in notes
+            text = re.sub(self.regexAttachment, r"\n\n*(Merged from Redmine, please check first note for attachment named **\1**)*", text, re.MULTILINE | re.DOTALL)
+
+            # code highlight
+            codeHighlights = re.findall(self.regexCodeHighlight, text)
+            if len(codeHighlights) > 0:
+                for i in range(0, len(codeHighlights)):
+                    text = text.replace(codeHighlights[i][0], "\n```{}".format(codeHighlights[i][2].lower()))
+                    text = text.replace(codeHighlights[i][3], "\n```")
         except RuntimeError as e:
             return False
         return text
