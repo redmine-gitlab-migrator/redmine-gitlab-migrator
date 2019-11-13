@@ -124,6 +124,12 @@ def parse_args():
         default=True,
         help="do not use sudo, use if user is not admin (e.g. gitlab.com)")
 
+    parser_issues.add_argument(
+        '--archive-account', dest='archive_acc',
+        required=False,
+        default=None,
+        help="if account doesn't exists in GitLab use this account as default")
+
     parser_pages.add_argument(
         '--gitlab-wiki',
         required=True,
@@ -216,18 +222,15 @@ def perform_migrate_issues(args):
     gitlab_project = GitlabProject(args.gitlab_project_url, gitlab)
 
     gitlab_instance = gitlab_project.get_instance()
-
     if (args.project_members_only):
         gitlab_users_index = gitlab_project.get_members_index()
     else:
         gitlab_users_index = gitlab_instance.get_users_index()
-
     redmine_users_index = redmine_project.get_users_index()
     milestones_index = gitlab_project.get_milestones_index()
     textile_converter = TextileConverter()
 
     log.debug('GitLab milestones are: {}'.format(', '.join(milestones_index) + ' '))
-
     # get issues
     log.info('Getting redmine issues')
     issues = redmine_project.get_all_issues()
@@ -239,7 +242,7 @@ def perform_migrate_issues(args):
     issues_data = (
         convert_issue(args.redmine_key,
             i, redmine_users_index, gitlab_users_index, milestones_index, closed_states, custom_fields, textile_converter,
-            args.keep_id or args.keep_title, args.sudo)
+            args.keep_id or args.keep_title, args.sudo, args.archive_acc)
         for i in issues)
 
     # create issues
@@ -275,9 +278,8 @@ def perform_migrate_issues(args):
                 except:
                     log.info('create issue "{}" failed'.format('fake'))
                     raise
-
             try:
-                created = gitlab_project.create_issue(data, meta)
+                created = gitlab_project.create_issue(data, meta, gitlab.get_auth_headers())
                 last_iid = created['iid']
                 log.info('#{iid} {title}'.format(**created))
             except:
