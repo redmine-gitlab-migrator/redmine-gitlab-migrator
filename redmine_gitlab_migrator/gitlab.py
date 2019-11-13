@@ -119,13 +119,15 @@ class GitlabProject(Project):
            files = []
            try:
                files = [("file", (u['filename'], urlopen(u['content_url']), u['content_type']))]
-               l.append('{} {}'.format(upload['markdown'], u['description']))
-           except:
-               log.warn("{} doesn't exists!".format(u['content_url']))
+           except requests.exceptions.HTTPError as e:
+               log.warn("{} can't upload due to error: {}!".format(u['content_url'], e.response.content))
+
 
            try:
                upload = self.api.post(
                    uploads_url, files=files)
+               l.append('{} {}'.format(upload['markdown'], u['description']))
+
            except requests.exceptions.HTTPError:
                # gitlab might throw an "ArgumentError (invalid byte sequence in UTF-8)" in production.log
                # if the filename contains special chars like german "umlaute"
@@ -134,8 +136,8 @@ class GitlabProject(Project):
                    files = [("file", (self.remove_non_ascii(u['filename']), urlopen(u['content_url']), u['content_type']))]
                    upload = self.api.post(uploads_url, files=files)
                    l.append('{} {}'.format(upload['markdown'], u['description']))
-               except:
-                   log.warn("{} doesn't exists!".format(u['content_url']))
+               except requests.exceptions.HTTPError as e:
+                   log.warn("{} can't upload due to error: {}!".format(u['content_url'], e.response.content))
 
 
         return "\n  * ".join(l)
