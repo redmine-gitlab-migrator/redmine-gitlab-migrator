@@ -26,7 +26,7 @@ class RedmineTestCase(unittest.TestCase):
             'http://localhost:9000/projects/puppet',
             self.client)
 
-        self.assertEqual(len(project_1.get_participants()), 2)
+        self.assertEqual(len(project_1.get_participants()), 1)
         self.assertIn('@', project_1.get_participants()[0]['mail'])
         self.assertEqual(len(project_2.get_participants()), 0)
 

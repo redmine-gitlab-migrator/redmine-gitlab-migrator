@@ -12,7 +12,7 @@ user_dict = None
 def load_user_dict(path):
     global user_dict
     with open(path, 'r') as stream:
-        user_dict = yaml.load(stream)
+        user_dict = yaml.load(stream, Loader=yaml.SafeLoader)
 
 def redmine_username_to_gitlab_username(redmine_username):
     if user_dict is not None and redmine_username in user_dict:
@@ -29,7 +29,6 @@ def redmine_uid_to_gitlab_user(redmine_id, redmine_user_index, gitlab_user_index
     if not redmine_login in gitlab_user_index:
         redmine_login = 'root'
     return gitlab_user_index[redmine_login]
-
 
 def convert_attachment(redmine_issue_attachment, redmine_api_key):
     """ Convert a list of redmine attachments to gitlab uploads
@@ -48,7 +47,7 @@ def convert_attachment(redmine_issue_attachment, redmine_api_key):
     return uploads
 
 
-def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index, textile_converter, sudo):
+def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index, textile_converter, sudo, archive_acc):
     """ Convert a list of redmine journal entries to gitlab notes
 
     Filters out the empty notes (ex: bare status change)
@@ -62,7 +61,7 @@ def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index,
 
     for entry in redmine_issue_journals:
         journal_notes = entry.get('notes', '')
-        if len(journal_notes) > 0:
+        if journal_notes is not None and len(journal_notes) > 0:
             journal_notes = textile_converter.convert(journal_notes)
             try:
                 author = redmine_uid_to_gitlab_user(
@@ -70,10 +69,14 @@ def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index,
             except KeyError:
                 # In some cases you have anonymous notes, which do not exist in
                 # gitlab.
-                log.warning(
-                    'Redmine user {} is unknown, attribute note '
-                    'to current admin\n'.format(entry['user']))
-                author = None
+                if archive_acc is not None:
+                    author = archive_acc
+                    journal_notes = "Archive from user: {}\n\n{}".format(entry['user']['name'], journal_notes)
+                else:
+                    log.warning(
+                        'Redmine user {} is unknown, attribute note '
+                        'to current admin\n'.format(entry['user']))
+                    author = None
             if not sudo and author is not None:
                 creator_text = " by {}".format(author)
             else:
@@ -155,7 +158,7 @@ def custom_fields_to_string(custom_fields, custom_fields_include):
 # Convertor
 
 def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_user_index,
-		  gitlab_milestones_index, closed_states, custom_fields_include, textile_converter, keep_title, sudo):
+		  gitlab_milestones_index, closed_states, custom_fields_include, textile_converter, keep_title, sudo, archive_acc):
 
     issue_state = redmine_issue['status']['name']
 
@@ -205,15 +208,19 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     else:
         title = '-RM-{}-MR-{}'.format(redmine_issue['id'], redmine_issue['subject'])
 
+    isFromAnonymous = False
     try:
         author_login = redmine_uid_to_gitlab_user(
             redmine_issue['author']['id'], redmine_user_index, gitlab_user_index)['username']
-
     except KeyError:
-        log.warning(
-            'Redmine issue #{} is anonymous, gitlab issue is attributed '
-            'to current admin\n'.format(redmine_issue['id']))
-        author_login = None
+        if archive_acc is not None:
+            author_login = archive_acc
+        else:    
+            log.warning(
+                'Redmine issue #{} is anonymous, gitlab issue is attributed '
+                'to current admin\n'.format(redmine_issue['id']))
+            author_login = None
+            isFromAnonymous = True
 
     if not sudo and author_login is not None:
         creator_text = ' by {}'.format(author_login)
@@ -221,10 +228,21 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
         creator_text = ''
 
     description = redmine_issue.get('description', "")
+    if archive_acc is not None and archive_acc is author_login:
+        if isFromAnonymous is True:
+            description = "Archive from Anonymous user \n\n{}".format(description)
+        else:
+            description = "Archive from user: {}\n\n{}".format(redmine_issue['author']['name'], description)
+    converted_description = textile_converter.convert(description)
+    if converted_description is False:
+        converted_description = description
+        log.error("Can't convert Redmine issue {} to markdown formatting! Use clear text!".format(
+            redmine_issue['id']
+        ))
     data = {
         'title': title,
         'description': '{}\n\n*(from redmine: issue id {}, created on {}{}{})*\n{}{}{}'.format(
-            textile_converter.convert(description),
+            converted_description,
             redmine_issue['id'],
             redmine_issue['created_on'][:10],
             creator_text,
@@ -240,11 +258,14 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
 
     version = redmine_issue.get('fixed_version', None)
     if version:
-        data['milestone_id'] = gitlab_milestones_index[version['name']]['id']
+        if version['name'] in gitlab_milestones_index:
+            data['milestone_id'] = gitlab_milestones_index[version['name']]['id']
+        else:
+            print("Milestone {} doesn't exists in GitLab Project but exists in Redmine!".format(version['name']))
 
     meta = {
         'notes': list(convert_notes(redmine_issue['journals'],
-                          redmine_user_index, gitlab_user_index, textile_converter, sudo)),
+                          redmine_user_index, gitlab_user_index, textile_converter, sudo, archive_acc)),
         'must_close': closed,
         'uploads': list(convert_attachment(a, redmine_api_key) for a in attachments)
     }
@@ -257,9 +278,12 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
             data['assignee_id'] = redmine_uid_to_gitlab_user(
                 assigned_to['id'], redmine_user_index, gitlab_user_index)['id']
         except KeyError:
-            log.warning(
-                'Redmine issue #{} assignee is anonymous. gitlab assinee is attributed '
-                'to current admin\n'.format(redmine_issue['id']))
+            if archive_acc is not None:
+                data['assignee_id'] = gitlab_user_index[archive_acc]['id']
+            else:
+                log.warning(
+                    'Redmine issue #{} assignee is anonymous. gitlab assinee is attributed '
+                    'to current admin\n'.format(redmine_issue['id']))
             if assigned_to['name']:
                 data['labels'] = data['labels'] + ',' + assigned_to['name']
 
@@ -276,13 +300,21 @@ def convert_version(redmine_version):
     :rtype: couple: dict, dict
     :return: a dict describing gitlab-api-style milestone and another for meta
     """
+    created_on_string = ""
+    if 'created_on' not in redmine_version or redmine_version['created_on'] is None:
+        log.warning(
+            "Created date for version {} isn't given in redmine!".format(redmine_version['name'])
+        )
+    else:
+        created_on_string = ": created on {}".format(redmine_version['created_on'][:10])
+        
     milestone = {
         "title": redmine_version['name'],
-        "description": '{}\n\n*(from redmine: created on {})*'.format(
+        "description": '{}\n\n*(from redmine{})*'.format(
             redmine_version.get('description', ""),
-            redmine_version['created_on'][:10])
+            created_on_string)
     }
-    if 'due_date' in redmine_version:
+    if 'due_date' in redmine_version and redmine_version['due_date'] is not None:
         milestone['due_date'] = redmine_version['due_date'][:10]
 
     must_close = redmine_version['status'] == 'closed'

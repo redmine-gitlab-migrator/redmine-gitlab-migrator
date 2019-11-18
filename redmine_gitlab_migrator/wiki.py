@@ -25,6 +25,10 @@ class TextileConverter():
         self.regexImportantMacro = re.compile(r'\{\{important\((.*?)\)\}\}')
         self.regexAnyMacro = re.compile(r'\{\{(.*)\}\}')
         self.regexCodeBlock = re.compile(r'\A  ((.|\n)*)', re.MULTILINE)
+        self.regexCollapse = re.compile(r'({{collapse\s?\(([^)]+)\))(.*)(}})', re.MULTILINE | re.DOTALL)
+        self.regexParagraph = re.compile(r'p(\(+|(\)+)?>?|=)?\.', re.MULTILINE | re.DOTALL)
+        self.regexCodeHighlight = re.compile(r'(<code\s?(class=\"(.*)\")?>).*(</code>)', re.MULTILINE | re.DOTALL)
+        self.regexAttachment = re.compile(r'attachment:[\'\"“”‘’„”«»](.*)[\'\"“”‘’„”«»]', re.MULTILINE | re.DOTALL)
 
     def wiki_link(self, match):
         name = match.group(1)
@@ -47,34 +51,54 @@ class TextileConverter():
     def convert(self, text):
         text = '\n\n'.join([re.sub(self.regexCodeBlock, r'<pre>\1</pre>', block) for block in text.split('\n\n')])
 
+        collapseResults = re.findall(self.regexCollapse, text)
+        if len(collapseResults) > 0:
+            for i in range(0, len(collapseResults)):
+                text = text.replace(collapseResults[i][0], "<details>")
+                text = text.replace(collapseResults[i][2], "<summary>{}</summary> \n\n{}".format(collapseResults[i][1], collapseResults[i][2]))
+                text = text.replace(collapseResults[i][3], "</details>")
+        text = re.sub(self.regexParagraph, "", text)
+
         # convert from textile to markdown
-        text = pypandoc.convert_text(text, 'markdown_strict', format='textile')
+        try:
+            text = pypandoc.convert_text(text, 'markdown_strict', format='textile')
 
-        # pandoc does not convert everything, notably the [[link|text]] syntax
-        # is not handled. So let's fix that.
+            # pandoc does not convert everything, notably the [[link|text]] syntax
+            # is not handled. So let's fix that.
 
-        # [[ wikipage | link_text ]] -> [link_text](wikipage)
-        text = re.sub(self.regexWikiLinkWithText, self.wiki_link, text, re.MULTILINE | re.DOTALL)
+            # [[ wikipage | link_text ]] -> [link_text](wikipage)
+            text = re.sub(self.regexWikiLinkWithText, self.wiki_link, text, re.MULTILINE | re.DOTALL)
 
-        # [[ link_url ]] -> [link_url](link_url)
-        text = re.sub(self.regexWikiLinkWithoutText, self.wiki_link, text, re.MULTILINE | re.DOTALL)
+            # [[ link_url ]] -> [link_url](link_url)
+            text = re.sub(self.regexWikiLinkWithoutText, self.wiki_link, text, re.MULTILINE | re.DOTALL)
 
-        # nested lists, fix at least the common issues
-        text = text.replace("    \\#\\*", "    -")
-        text = text.replace("    \\*\\#", "    1.")
+            # nested lists, fix at least the common issues
+            text = text.replace("    \\#\\*", "    -")
+            text = text.replace("    \\*\\#", "    1.")
 
-        # Redmine is using '>' for blockquote, which is not textile
-        text = text.replace("&gt; ", ">")
+            # Redmine is using '>' for blockquote, which is not textile
+            text = text.replace("&gt; ", ">")
 
-        # wiki note macros
-        text = re.sub(self.regexTipMacro, r'---\n**TIP**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
-        text = re.sub(self.regexNoteMacro, r'---\n**NOTE**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
-        text = re.sub(self.regexWarningMacro, r'---\n**WARNING**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
-        text = re.sub(self.regexImportantMacro, r'---\n**IMPORTANT**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
+            # wiki note macros
+            text = re.sub(self.regexTipMacro, r'---\n**TIP**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
+            text = re.sub(self.regexNoteMacro, r'---\n**NOTE**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
+            text = re.sub(self.regexWarningMacro, r'---\n**WARNING**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
+            text = re.sub(self.regexImportantMacro, r'---\n**IMPORTANT**: \1\n---\n', text, re.MULTILINE | re.DOTALL)
 
-        # all other macros
-        text = re.sub(self.regexAnyMacro, r'\1', text, re.MULTILINE | re.DOTALL)
+            # all other macros
+            text = re.sub(self.regexAnyMacro, r'\1', text, re.MULTILINE | re.DOTALL)
 
+            # attachments in notes
+            text = re.sub(self.regexAttachment, r"\n\n*(Merged from Redmine, please check first note for attachment named **\1**)*", text, re.MULTILINE | re.DOTALL)
+
+            # code highlight
+            codeHighlights = re.findall(self.regexCodeHighlight, text)
+            if len(codeHighlights) > 0:
+                for i in range(0, len(codeHighlights)):
+                    text = text.replace(codeHighlights[i][0], "\n```{}".format(codeHighlights[i][2].lower()))
+                    text = text.replace(codeHighlights[i][3], "\n```")
+        except RuntimeError as e:
+            return False
         return text
 
 class WikiPageConverter():

@@ -1,8 +1,8 @@
 import re
 import logging
 import requests
-
 from . import APIClient, Project
+import urllib
 from urllib.request import urlopen
 
 from redmine_gitlab_migrator.converters import redmine_username_to_gitlab_username
@@ -116,20 +116,30 @@ class GitlabProject(Project):
 
            # http://docs.python-requests.org/en/latest/user/quickstart/#post-a-multipart-encoded-file
            # http://stackoverflow.com/questions/20830551/how-to-streaming-upload-with-python-requests-module-include-file-and-data
-           files = [("file", (u['filename'], urlopen(u['content_url']), u['content_type']))]
+
+           files = []
+           try:
+               files = [("file", (u['filename'], urlopen(u['content_url']), u['content_type']))]
+           except urllib.error.HTTPError as e:
+               log.warn("{} can't upload due to error: {}!".format(u['content_url'], e))
+
 
            try:
                upload = self.api.post(
                    uploads_url, files=files)
+               l.append('{} {}'.format(upload['markdown'], u['description']))
+
            except requests.exceptions.HTTPError:
                # gitlab might throw an "ArgumentError (invalid byte sequence in UTF-8)" in production.log
                # if the filename contains special chars like german "umlaute"
                # in that case we retry with an ascii only filename.
-               files = [("file", (self.remove_non_ascii(u['filename']), urlopen(u['content_url']), u['content_type']))]
-               upload = self.api.post(
-                   uploads_url, files=files)
+               try:
+                   files = [("file", (self.remove_non_ascii(u['filename']), urlopen(u['content_url']), u['content_type']))]
+                   upload = self.api.post(uploads_url, files=files)
+                   l.append('{} {}'.format(upload['markdown'], u['description']))
+               except urllib.error.HTTPError as e:
+                   log.warn("{} can't upload due to error: {}!".format(u['content_url'], e))
 
-           l.append('{} {}'.format(upload['markdown'], u['description']))
 
         return "\n  * ".join(l)
 
@@ -137,11 +147,12 @@ class GitlabProject(Project):
         # http://stackoverflow.com/a/20078869/98491
         return ''.join([i if ord(i) < 128 else ' ' for i in text])
 
-    def create_issue(self, data, meta):
+    def create_issue(self, data, meta, auth_header):
         """ High-level issue creation
 
         :param meta: dict with "sudo_user", "must_close", "notes" and "attachments" keys
         :param data: dict formatted as the gitlab API expects it
+        :param auth_header: dict to with headers to auth request
         :return: the created issue (without notes)
         """
 
@@ -151,20 +162,25 @@ class GitlabProject(Project):
         uploads_text = self.uploads_to_string(meta['uploads'])
         if len(uploads_text) > 0:
            data['description'] = "{}\n* Uploads:\n  * {}".format(data['description'], uploads_text)
-
-        headers = {}
+        headers = auth_header
         if 'sudo_user' in meta:
             headers['SUDO'] = meta['sudo_user']
         issues_url = '{}/issues'.format(self.api_url)
-        issue = self.api.post(
-            issues_url, data=data, headers=headers)
+        issue = None
+        try:
+            issue = self.api.post(
+                issues_url, data=data, headers=headers)
+        except requests.exceptions.HTTPError as e:
+            log.error("Can't convert issue due to error: {}".format(e.response.content))
+            exit()
+
 
         issue_url = '{}/{}'.format(issues_url, issue['iid'])
 
         # Handle issues notes
         issue_notes_url = '{}/notes'.format(issue_url, 'notes')
         for note_data, note_meta in meta['notes']:
-            note_headers = {}
+            note_headers = auth_header
             if 'sudo_user' in note_meta:
                 note_headers['SUDO'] = note_meta['sudo_user']
             self.api.post(
