@@ -233,7 +233,10 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
             description = "Archive from Anonymous user \n\n{}".format(description)
         else:
             description = "Archive from user: {}\n\n{}".format(redmine_issue['author']['name'], description)
-    converted_description = textile_converter.convert(description)
+    if description:
+        converted_description = textile_converter.convert(description)
+    else:
+        converted_description = ""
     if converted_description is False:
         converted_description = description
         log.error("Can't convert Redmine issue {} to markdown formatting! Use clear text!".format(
