@@ -187,6 +187,14 @@ class GitlabProject(Project):
                 issue_notes_url, data=note_data,
                 headers=note_headers)
 
+        # Handle estimated and spent time
+        if meta['human_time_estimate'] is not None:
+            time_estimate_url = '{}/time_estimate?duration={}h'.format(issue_url, meta['human_time_estimate'])
+            self.api.post(time_estimate_url)
+        if meta['human_total_time_spent'] is not None:
+            time_spent_url = '{}/add_spent_time?duration={}h'.format(issue_url, meta['human_total_time_spent'])
+            self.api.post(time_spent_url)
+
         # Handle closed status
         if meta['must_close']:
             self.api.put(issue_url, {'state_event': 'close'})

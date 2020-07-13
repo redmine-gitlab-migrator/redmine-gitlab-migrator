@@ -58,6 +58,8 @@ class ConvertorTestCase(unittest.TestCase):
                  {'sudo_user': 'john_smith'})
                 # empty notes should not be kept
             ],
+            'human_time_estimate': 0,
+            'human_total_time_spent': 0,
             'must_close': True,
             'sudo_user': 'jack_smith',
             'uploads': []
@@ -84,7 +86,9 @@ class ConvertorTestCase(unittest.TestCase):
             'sudo_user': JOHN['username'],
             'notes': [],
             'must_close': False,
-            'uploads': []
+            'uploads': [],
+            'human_time_estimate': 0,
+            'human_total_time_spent': 0,
         })
 
     def test_open_version(self):

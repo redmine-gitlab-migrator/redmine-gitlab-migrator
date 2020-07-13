@@ -119,7 +119,7 @@ class RedmineProject(Project):
             for i in chain(i.get('watchers', []),
                            [i['author'], i.get('assigned_to', None)]):
 
-                if i is None or 'author' not in i:
+                if i is None or ('name' not in i and 'author' not in i):
                     continue
                 user_ids.add(i['id'])
             for entry in journals:

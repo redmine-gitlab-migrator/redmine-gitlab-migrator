@@ -263,11 +263,16 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
         else:
             print("Milestone {} doesn't exists in GitLab Project but exists in Redmine!".format(version['name']))
 
+    estimated_hours = redmine_issue.get('estimated_hours', 0)
+    spent_hours = redmine_issue.get('spent_hours', 0)
+
     meta = {
         'notes': list(convert_notes(redmine_issue['journals'],
                           redmine_user_index, gitlab_user_index, textile_converter, sudo, archive_acc)),
         'must_close': closed,
-        'uploads': list(convert_attachment(a, redmine_api_key) for a in attachments)
+        'uploads': list(convert_attachment(a, redmine_api_key) for a in attachments),
+        "human_time_estimate": estimated_hours,
+        "human_total_time_spent": spent_hours
     }
     if sudo:
         meta['sudo_user'] = author_login
