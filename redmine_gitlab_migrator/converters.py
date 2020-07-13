@@ -263,8 +263,8 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
         else:
             print("Milestone {} doesn't exists in GitLab Project but exists in Redmine!".format(version['name']))
 
-    estimated_hours = str(redmine_issue.get('estimated_hours', 0)) + "h"
-    spent_hours = str(redmine_issue.get('spent_hours', 0)) + "h"
+    estimated_hours = redmine_issue.get('estimated_hours', 0)
+    spent_hours = redmine_issue.get('spent_hours', 0)
 
     meta = {
         'notes': list(convert_notes(redmine_issue['journals'],
