@@ -188,10 +188,10 @@ class GitlabProject(Project):
                 headers=note_headers)
 
         # Handle estimated and spent time
-        if meta['human_time_estimate'] is not None:
+        if meta['human_time_estimate'] is not None and meta['human_time_estimate'] != 0.0:
             time_estimate_url = '{}/time_estimate?duration={}h'.format(issue_url, meta['human_time_estimate'])
             self.api.post(time_estimate_url)
-        if meta['human_total_time_spent'] is not None:
+        if meta['human_total_time_spent'] is not None and meta['human_total_time_spent'] != 0.0:
             time_spent_url = '{}/add_spent_time?duration={}h'.format(issue_url, meta['human_total_time_spent'])
             self.api.post(time_spent_url)
 
