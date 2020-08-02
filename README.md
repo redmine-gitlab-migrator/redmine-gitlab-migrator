@@ -247,3 +247,46 @@ Use the standard way:
     python setup.py test
 
 Or use whatever test runner you fancy.
+
+Using Docker container
+----------------------
+
+### Start up GitLab with migrator
+
+cf. [GitLab Docs](https://docs.gitlab.com/) > Omnibus GitLab Doc > [GitLab Docker images](https://docs.gitlab.com/omnibus/docker/)
+
+    export GITLAB_HOME=$PWD/srv/gitlab
+    docker-compose up -d
+    docker-compose logs -f  # You can watch logs and stop with Ctrl+C
+
+After starting a container you can access GitLab http://localhost:8081
+
+- Create group/project and users
+- Create Access Token
+
+### Migrate with docker-compose command
+
+#### Roadmap
+
+    docker-compose exec migrator \
+      migrate-rg roadmap --redmine-key xxxx --gitlab-key xxxx \
+      https://redmine.example.com/projects/myproject \
+      http://localhost:8081/mygroup/myproject
+
+#### Issues
+
+    docker-compose exec migrator \
+      migrate-rg issues --redmine-key xxxx --gitlab-key xxxx \
+      https://redmine.example.com/projects/myproject \
+      http://localhost:8081/mygroup/myproject
+
+#### Issues ID (iid)
+
+    docker-compose exec migrator \
+      migrate-rg iid --gitlab-key xxxx \
+      http://localhost:8081/mygroup/myproject
+
+### Export/Import to production system
+
+cf. GitLab Docs
+GitLab Docs > User Docs > Projects > Project settings > [Project import/export](https://docs.gitlab.com/ee/user/project/settings/import_export.html)
