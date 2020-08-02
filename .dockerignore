@@ -9,4 +9,8 @@ build/
 *.egg-info
 dist/
 .idea/
+
+.git/
+docker-compose.yml
+Dockerfile
 srv/
