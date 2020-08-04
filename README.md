@@ -75,7 +75,7 @@ up to you.
 
 Install it:
 
-    pip install redmine-gitlab-migrator
+    pip install git+https://github.com/redmine-gitlab-migrator/redmine-gitlab-migrator
 
 
 (or if you cloned the git: `python setup.py install`)
