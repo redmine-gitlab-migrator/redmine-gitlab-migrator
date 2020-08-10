@@ -267,7 +267,7 @@ def perform_migrate_issues(args):
         else:
             if args.keep_id:
                 try:
-                    fake_meta = {'uploads': [], 'notes': [], 'must_close': False}
+                    fake_meta = {'uploads': [], 'notes': [], 'must_close': False, 'human_time_estimate': None, 'human_total_time_spent': None}
                     if args.sudo:
                         fake_meta['sudo_user'] = meta['sudo_user']
                     while redmine_id > last_iid + 1:
