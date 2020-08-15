@@ -133,9 +133,9 @@ class WikiPageConverter():
         self.textile_converter = TextileConverter()
 
     def convert(self, redmine_page):
-        title = (self.textile_converter.normalize(redmine_page["title"])
-                 if 'parent' in redmine_page
-                 else 'home')
+        title = self.textile_converter.normalize(redmine_page["title"])
+        if (title == 'Wiki'):
+            title = 'home'
         print("Converting {} ({} version {})".format(title, redmine_page["title"], redmine_page["version"]))
 
         text = redmine_page.get('text', "")
