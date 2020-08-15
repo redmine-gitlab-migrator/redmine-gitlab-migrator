@@ -75,10 +75,15 @@ up to you.
 
 Install it:
 
+    pip install redmine-gitlab-migrator
+
+or latest version from GitHub:
+
     pip install git+https://github.com/redmine-gitlab-migrator/redmine-gitlab-migrator
 
+or if you cloned the git:
 
-(or if you cloned the git: `python setup.py install`)
+    python setup.py install
 
 You can then give it a check without touching anything:
 
