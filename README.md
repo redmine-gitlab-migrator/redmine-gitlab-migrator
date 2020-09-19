@@ -13,8 +13,7 @@ Does
   - redmine trackers become tags
   - redmine categories become tags
   - issues comments are kept and assigned to the right users
-  - issues final status (open/closed) are kept along with open/close date (not
-    detailed status history)
+  - issues final status (open/closed) are kept along with open/close date (not detailed status history)
   - issues assignments are kept
   - issues numbers (ex: `#123`)
   - issues/notes authors
