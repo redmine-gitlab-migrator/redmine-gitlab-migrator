@@ -17,7 +17,7 @@ setup(
     author='Jocelyn Delalande',
     author_email='jdelalande@oasiswork.fr',
     license='GPL',
-    url='https://github/oasiswork/migrate-redmine-to-gitlab/',
+    url='https://github.com/redmine-gitlab-migrator/redmine-gitlab-migrator',
     packages=['redmine_gitlab_migrator'],
     install_requires=['pyyaml', 'requests', 'GitPython', 'pypandoc'],
     entry_points={
