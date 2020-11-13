@@ -122,6 +122,18 @@ redmine_user0: gitlab_user0
 redmine_user1: gitlab_user1
 ```
 
+For example, say that you have user on Redmine with username `bar` and that same user
+on GitLab has username `foo`. You can save your mapping to `users.yml` file with the
+following content:
+
+```yaml
+bar: foo
+```
+
+and then run the migration with `migrate-rg --user-dict users.yml`, among other flags,
+assuming you are running the migration from the same directory where you stored your
+user mapping.
+
 ### Migrate Roadmap
 
 If you do use roadmaps, redmine *versions* will be converted to gitlab
