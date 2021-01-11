@@ -18,7 +18,7 @@ Does
   - issues numbers (ex: `#123`)
   - issues/notes authors
   - issues/notes original dates, but as comments
-  - issue attachements
+  - issue attachments
   - issue related changesets
   - issues custom fields (if specified)
   - relations including children and parent (although gitlab model for relations is simpler)
@@ -101,7 +101,7 @@ This process is for each project, **order matters**.
 
 ### Create the gitlab project
 
-It doesn't neet to be named the same, you just have to record it's URL (eg:
+It doesn't need to be named the same, you just have to record its URL (eg:
 *https://git.example.com/mygroup/myproject*).
 
 ### Create users
@@ -171,7 +171,7 @@ If you want to migrate redmine custom fields (as description), you can specify
 
     --custom-fields Customer,ZendeskIssueId
 
-If you're using SSL with self signed cerificates and get an *requests.exceptions.SSLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed (_ssl.c:600)* error, you can disable certificate validation with
+If you're using SSL with self signed certificates and get an *requests.exceptions.SSLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed (_ssl.c:600)* error, you can disable certificate validation with
 
     --no-verify
 
@@ -193,7 +193,7 @@ You can retain the issues ID from redmine, **this cannot be done via REST
 API**, thus it requires **direct access to the gitlab machine**.
 
 So you have to log in the gitlab machine (eg. via SSH), and then issue the
-commad with sufficient rights, from there:
+command with sufficient rights, from there:
 
     migrate-rg iid --gitlab-key xxxx \
       http://git.example.com/mygroup/myproject --check
@@ -213,7 +213,7 @@ to your machine). Add "--no-history" if you do not want the old versions of
 each page to be converted, too.
 
 After conversion, verify that everything is correct (a copy of the original
-wiki page is included in the repo, however not added/commited), and then
+wiki page is included in the repo, however not added/committed), and then
 simply push it back to GitLab.
 
 ### Import git repository
