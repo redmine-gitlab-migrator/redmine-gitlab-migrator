@@ -261,7 +261,7 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
         if version['name'] in gitlab_milestones_index:
             data['milestone_id'] = gitlab_milestones_index[version['name']]['id']
         else:
-            print("Milestone {} doesn't exists in GitLab Project but exists in Redmine!".format(version['name']))
+            print("Milestone {} doesn't exist in GitLab Project but exists in Redmine!".format(version['name']))
 
     estimated_hours = redmine_issue.get('estimated_hours', 0)
     spent_hours = redmine_issue.get('spent_hours', 0)
