@@ -128,7 +128,7 @@ def parse_args():
         '--archive-account', dest='archive_acc',
         required=False,
         default=None,
-        help="if account doesn't exists in GitLab use this account as default")
+        help="if account doesn't exist in GitLab use this account as default")
 
     parser_pages.add_argument(
         '--gitlab-wiki',
