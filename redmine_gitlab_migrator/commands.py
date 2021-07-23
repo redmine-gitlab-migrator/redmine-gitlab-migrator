@@ -86,12 +86,12 @@ def parse_args():
     parser_issues.add_argument(
         '--closed-states',
         required=False,
-        help="comma seperated list of redmine states that close an issue, default closed,rejected")
+        help="comma separated list of redmine states that close an issue, default closed,rejected")
 
     parser_issues.add_argument(
         '--custom-fields',
         required=False,
-        help="comma seperated list of redmine custom filds to migrate")
+        help="comma separated list of redmine custom fields to migrate")
 
     parser_issues.add_argument(
         '--user-dict',
