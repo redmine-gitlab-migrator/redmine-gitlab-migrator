@@ -235,7 +235,7 @@ class GitlabProject(Project):
         return self.api.get('{}/issues'.format(self.api_url))
 
     def get_members(self):
-        project_members = self.api.get('{}/members'.format(self.api_url))
+        project_members = self.api.get('{}/members/all'.format(self.api_url))
         if self.group_id:
             group_members = self.get_instance().get_group_members(self.group_id)
             return project_members + group_members
