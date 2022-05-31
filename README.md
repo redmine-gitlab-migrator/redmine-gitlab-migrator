@@ -187,6 +187,10 @@ allowed, so you have to disable sudo with
 
     --no-sudo
 
+If Markdown is used in Redmine, textile conversion can be skipped with
+
+    --no-textile
+
 ### Migrate Issues ID (iid)
 
 You can retain the issues ID from redmine, **this cannot be done via REST
