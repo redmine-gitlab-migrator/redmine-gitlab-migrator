@@ -12,7 +12,7 @@ class RedmineTestCase(unittest.TestCase):
         project = RedmineProject(
             'http://localhost:9000/projects/diaspora-site',
             self.client)
-        issues = project.get_all_issues()
+        issues = project.get_issues()
         self.assertEqual(len(issues), 2)
         self.assertEqual(len(issues[0].get('journals', [])), 0)
         self.assertEqual(len(issues[1].get('journals', [])), 2)

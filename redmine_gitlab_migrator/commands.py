@@ -115,6 +115,11 @@ def parse_args():
         help="create and delete empty issues for gaps, useful when no ssh is possible (e.g. gitlab.com)")
 
     parser_issues.add_argument(
+        '--issue-ids',
+        required=False,
+        help="Comma separated issue IDs, to migrate specific issues")
+
+    parser_issues.add_argument(
         '--keep-title',
         required=False, action='store_true', default=False,
         help="migrate issues with same title, useful when no ssh is possible (e.g. gitlab.com) and don't need to keep id (faster)")
@@ -237,7 +242,7 @@ def perform_migrate_issues(args):
         gitlab_users_index = gitlab_project.get_members_index()
     else:
         gitlab_users_index = gitlab_instance.get_users_index()
-    redmine_users_index = redmine_project.get_users_index()
+    redmine_users_index = redmine_project.get_users_index(args.issue_ids)
     milestones_index = gitlab_project.get_milestones_index()
     if args.no_textile:
         textile_converter = NopConverter()
@@ -247,7 +252,7 @@ def perform_migrate_issues(args):
     log.debug('GitLab milestones are: {}'.format(', '.join(milestones_index) + ' '))
     # get issues
     log.info('Getting redmine issues')
-    issues = redmine_project.get_all_issues()
+    issues = redmine_project.get_issues(args.issue_ids)
     if args.initial_id:
         issues = [issue for issue in issues if int(args.initial_id) <= issue['id']]
 
@@ -391,7 +396,7 @@ def perform_redirect(args):
     redmine_project = RedmineProject(args.redmine_project_url, redmine)
 
     # get issues
-    redmine_issues = redmine_project.get_all_issues()
+    redmine_issues = redmine_project.get_issues(args.issue_ids)
 
     print('# uncomment next line to enable RewriteEngine')
     print('# RewriteEngine On')
