@@ -1,5 +1,7 @@
 import logging
 
+import time
+
 import requests
 
 # http://stackoverflow.com/a/28002687/98491
@@ -33,11 +35,24 @@ class APIClient:
         log.debug('HTTP REQUEST {} {} {}'.format(
             func, args, kwargs))
         kwargs = self.add_auth_headers(kwargs)
-        resp = func(*args, **kwargs)
-        resp.raise_for_status()
-        ret = resp.json()
-        log.debug('HTTP RESPONSE {}'.format(ret))
-        return ret
+
+        retries = 3
+        retry_wait = 5
+        for tri in range(1,retries+1):
+            try:
+                resp = func(*args, **kwargs)
+                resp.raise_for_status()
+            except requests.HTTPError as e:
+                ret = resp.json()
+                log.debug('HTTP RESPONSE {}'.format(ret))
+                if retries == tri:
+                    raise e
+                else:
+                    log.exception("HTTPError retry in {} seconds".format(retry_wait))
+                    time.sleep(retry_wait)
+                    log.info("Retry {}".format(tri+1))
+                    continue
+            return ret
 
     def get(self, *args, **kwargs):
         return self._req(requests.get, *args, **kwargs)
