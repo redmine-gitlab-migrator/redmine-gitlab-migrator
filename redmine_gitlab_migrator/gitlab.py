@@ -79,26 +79,8 @@ class GitlabProject(Project):
         path_with_namespace = (
             '{namespace}/{project_name}'.format(
                 **self._url_match.groupdict()))
-        projectId = -1
-        groupId = None
 
-        projects_info = self.api.get('{}/projects?owned=true'.format(self.instance_url))
-
-        for project_attributes in projects_info:
-            if project_attributes.get('path_with_namespace') == path_with_namespace:
-                projectId = project_attributes.get('id')
-                if project_attributes.get('namespace').get('kind') == 'group':
-                    groupId = project_attributes.get('namespace').get('id')
-
-        self.project_id = projectId
-        if projectId == -1 :
-            raise ValueError('Could not get project_id for path_with_namespace: {}'.format(path_with_namespace))
-        if groupId:
-            self.group_id = groupId
-
-        self.api_url = (
-            '{base_url}api/v4/projects/'.format(
-                **self._url_match.groupdict())) + str(projectId)
+        self.api_url = ('{base_url}api/v4/projects/{project_path}'.format(project_path=urllib.parse.quote(path_with_namespace, safe='', ), **self._url_match.groupdict()))
 
 
     def is_repository_empty(self):
@@ -281,4 +263,3 @@ class GitlabProject(Project):
         """ Return a GitlabInstance
         """
         return GitlabInstance(self.instance_url, self.api)
-
