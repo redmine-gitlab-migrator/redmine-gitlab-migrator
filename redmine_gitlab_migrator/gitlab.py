@@ -7,7 +7,7 @@ from urllib.request import urlopen
 
 from redmine_gitlab_migrator.converters import redmine_username_to_gitlab_username
 
-from json.decoder import JSONDecodeError
+from simplejson.errors import JSONDecodeError
 
 log = logging.getLogger(__name__)
 
@@ -281,4 +281,3 @@ class GitlabProject(Project):
         """ Return a GitlabInstance
         """
         return GitlabInstance(self.instance_url, self.api)
-
