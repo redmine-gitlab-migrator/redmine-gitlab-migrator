@@ -12,6 +12,7 @@ srv/
 *~
 .cache
 .coverage
+.eggs
 .env
 keys.yml
 users.yml
