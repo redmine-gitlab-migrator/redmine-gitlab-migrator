@@ -52,7 +52,7 @@ class APIClient:
                     time.sleep(retry_wait)
                     log.info("Retry {}".format(tri+1))
                     continue
-            return ret
+            return resp.json()
 
     def get(self, *args, **kwargs):
         return self._req(requests.get, *args, **kwargs)
