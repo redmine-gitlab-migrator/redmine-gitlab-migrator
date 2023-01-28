@@ -38,6 +38,9 @@ class GitlabInstance:
         self.url = url.strip('/')  # normalize URL
         self.api = client
 
+    def get_user(self):
+        return self.api.get('{}/user'.format(self.url))
+
     def get_all_users(self):
         return self.api.get('{}/users'.format(self.url))
 

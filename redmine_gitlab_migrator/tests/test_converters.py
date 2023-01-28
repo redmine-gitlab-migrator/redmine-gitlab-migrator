@@ -40,7 +40,7 @@ class ConvertorTestCase(unittest.TestCase):
         textile_converter = TextileConverter()
         gitlab_issue, meta, redmine_id = convert_issue(
             redmine_api_key, redmine_issue, self.redmine_user_index, self.gitlab_users_idx, {}, ['closed', 'rejected'], ['customer'],
-            textile_converter, False, True, None)
+            textile_converter, 'jack_smith', False, True, None)
         self.assertEqual(gitlab_issue, {
             'title': '-RM-1732-MR-Update doc for v1',
             'created_at': '2015-08-21T13:29:41Z',
@@ -72,7 +72,7 @@ class ConvertorTestCase(unittest.TestCase):
         textile_converter = TextileConverter()
         gitlab_issue, meta, redmine_id = convert_issue(
             redmine_api_key, redmine_issue, self.redmine_user_index, self.gitlab_users_idx,
-            milestone_index, ['closed', 'rejected'], ['customer'], textile_converter, False, True, None)
+            milestone_index, ['closed', 'rejected'], ['customer'], textile_converter, 'john_smith', False, True, None)
 
         self.assertEqual(gitlab_issue, {
             'title': '-RM-1439-MR-Support SSL',

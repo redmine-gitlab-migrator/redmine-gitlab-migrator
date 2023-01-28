@@ -250,6 +250,10 @@ def perform_migrate_issues(args):
         textile_converter = TextileConverter()
 
     log.debug('GitLab milestones are: {}'.format(', '.join(milestones_index) + ' '))
+    if args.sudo:
+        migrator_user = 'root'
+    else:
+        migrator_user = gitlab_instance.get_user()['username']
     # get issues
     log.info('Getting redmine issues')
     issues = redmine_project.get_issues(args.issue_ids)
@@ -260,7 +264,7 @@ def perform_migrate_issues(args):
     log.info('Converting issues')
     issues_data = (
         convert_issue(args.redmine_key,
-            i, redmine_users_index, gitlab_users_index, milestones_index, closed_states, custom_fields, textile_converter,
+            i, redmine_users_index, gitlab_users_index, milestones_index, closed_states, custom_fields, textile_converter, migrator_user,
             args.keep_id or args.keep_title, args.sudo, args.archive_acc)
         for i in issues)
 

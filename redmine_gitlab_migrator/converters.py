@@ -20,14 +20,14 @@ def redmine_username_to_gitlab_username(redmine_username):
     return redmine_username
 
 
-def redmine_uid_to_gitlab_user(redmine_id, redmine_user_index, gitlab_user_index):
+def redmine_uid_to_gitlab_user(redmine_id, redmine_user_index, gitlab_user_index, migrator_user):
     redmine_login = redmine_user_index[redmine_id]['login']
 
     # Check if mapping for this user exists
     redmine_login = redmine_username_to_gitlab_username(redmine_login)
 
     if not redmine_login in gitlab_user_index:
-        redmine_login = 'root'
+        redmine_login = migrator_user
     return gitlab_user_index[redmine_login]
 
 def convert_attachment(redmine_issue_attachment, redmine_api_key):
@@ -47,7 +47,7 @@ def convert_attachment(redmine_issue_attachment, redmine_api_key):
     return uploads
 
 
-def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index, textile_converter, sudo, archive_acc):
+def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index, textile_converter, migrator_user, sudo, archive_acc):
     """ Convert a list of redmine journal entries to gitlab notes
 
     Filters out the empty notes (ex: bare status change)
@@ -65,7 +65,7 @@ def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index,
             journal_notes = textile_converter.convert(journal_notes)
             try:
                 author = redmine_uid_to_gitlab_user(
-                    entry['user']['id'], redmine_user_index, gitlab_user_index)['username']
+                    entry['user']['id'], redmine_user_index, gitlab_user_index, migrator_user)['username']
             except KeyError:
                 # In some cases you have anonymous notes, which do not exist in
                 # gitlab.
@@ -158,7 +158,7 @@ def custom_fields_to_string(custom_fields, custom_fields_include):
 # Convertor
 
 def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_user_index,
-		  gitlab_milestones_index, closed_states, custom_fields_include, textile_converter, keep_title, sudo, archive_acc):
+		  gitlab_milestones_index, closed_states, custom_fields_include, textile_converter, migrator_user, keep_title, sudo, archive_acc):
 
     issue_state = redmine_issue['status']['name']
 
@@ -211,7 +211,7 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     isFromAnonymous = False
     try:
         author_login = redmine_uid_to_gitlab_user(
-            redmine_issue['author']['id'], redmine_user_index, gitlab_user_index)['username']
+            redmine_issue['author']['id'], redmine_user_index, gitlab_user_index, migrator_user)['username']
     except KeyError:
         if archive_acc is not None:
             author_login = archive_acc
@@ -268,7 +268,7 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
 
     meta = {
         'notes': list(convert_notes(redmine_issue['journals'],
-                          redmine_user_index, gitlab_user_index, textile_converter, sudo, archive_acc)),
+                          redmine_user_index, gitlab_user_index, textile_converter, migrator_user, sudo, archive_acc)),
         'must_close': closed,
         'uploads': list(convert_attachment(a, redmine_api_key) for a in attachments),
         "human_time_estimate": estimated_hours,
@@ -281,7 +281,7 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     if assigned_to is not None:
         try:
             data['assignee_id'] = redmine_uid_to_gitlab_user(
-                assigned_to['id'], redmine_user_index, gitlab_user_index)['id']
+                assigned_to['id'], redmine_user_index, gitlab_user_index, migrator_user)['id']
         except KeyError:
             if archive_acc is not None:
                 data['assignee_id'] = gitlab_user_index[archive_acc]['id']
