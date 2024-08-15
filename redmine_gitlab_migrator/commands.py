@@ -400,7 +400,10 @@ def perform_redirect(args):
     redmine_project = RedmineProject(args.redmine_project_url, redmine)
 
     # get issues
-    redmine_issues = redmine_project.get_issues(args.issue_ids)
+    if hasattr(args, 'issue_ids'):
+        redmine_issues = redmine_project.get_issues(args.issue_ids)
+    else:
+        redmine_issues = redmine_project.get_issues()
 
     print('# uncomment next line to enable RewriteEngine')
     print('# RewriteEngine On')
