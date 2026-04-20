@@ -43,7 +43,10 @@ class APIClient:
                 resp = func(*args, **kwargs)
                 resp.raise_for_status()
             except requests.HTTPError as e:
-                ret = resp.json()
+                try: 
+                    ret = resp.json()
+                except ValueError:
+                    ret = resp.text
                 log.debug('HTTP RESPONSE {}'.format(ret))
                 if retries == tri:
                     raise e
@@ -52,7 +55,12 @@ class APIClient:
                     time.sleep(retry_wait)
                     log.info("Retry {}".format(tri+1))
                     continue
-            return resp.json()
+            try:
+                return resp.json()
+            except ValueError:
+                raise Exception(
+                    f"Invalid JSON response: status={resp.status_code}, body={resp.text[:200]}"
+                )
 
     def get(self, *args, **kwargs):
         return self._req(requests.get, *args, **kwargs)
