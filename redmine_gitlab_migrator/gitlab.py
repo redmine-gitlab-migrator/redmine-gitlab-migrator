@@ -157,7 +157,7 @@ class GitlabProject(Project):
                 issues_url, data=data, headers=headers)
         except requests.exceptions.HTTPError as e:
             log.error("Can't convert issue due to error: {}".format(e.response.content))
-            exit()
+            return issue
 
 
         issue_url = '{}/{}'.format(issues_url, issue['iid'])

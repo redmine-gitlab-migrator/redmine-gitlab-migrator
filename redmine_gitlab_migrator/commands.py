@@ -292,8 +292,11 @@ def perform_migrate_issues(args):
                 data['iid'] = redmine_id
             try:
                 created = gitlab_project.create_issue(data, meta, gitlab.get_auth_headers())
-                last_iid = created['iid']
-                log.info('#{iid} {title}'.format(**created))
+                if created == None:
+                    log.info('none')
+                else:
+                    last_iid = created['iid']
+                    log.info('#{iid} {title}'.format(**created))
             except:
                 log.info('create issue "{}" failed'.format(data['title']))
                 raise
