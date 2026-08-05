@@ -66,6 +66,11 @@ def parse_args():
             '--gitlab-key',
             required=True,
             help="Gitlab administrator API key")
+        i.add_argument(
+            '--gitlab-url',
+            required=False, default=None,
+            help="Base URL of the GitLab instance (e.g. https://host/gitlab) "
+                 "when GitLab is not served at the root of the host")
 
     for i in (parser_issues, parser_pages, parser_roadmap, parser_iid, parser_redirect, delete_issues):
         i.add_argument(
@@ -114,10 +119,11 @@ def parse_args():
         required=False, action='store_true', default=False,
         help="create and delete empty issues for gaps, useful when no ssh is possible (e.g. gitlab.com)")
 
-    parser_issues.add_argument(
-        '--issue-ids',
-        required=False,
-        help="Comma separated issue IDs, to migrate specific issues")
+    for i in (parser_issues, parser_redirect):
+        i.add_argument(
+            '--issue-ids',
+            required=False, default=None,
+            help="Comma separated issue IDs, to migrate specific issues")
 
     parser_issues.add_argument(
         '--keep-title',
@@ -210,8 +216,8 @@ def perform_migrate_pages(args):
             try:
                 full_page = redmine_project.get_page(page["title"], version)
                 pages.append(full_page)
-            except:
-                log.error("Error when retrieving " + page["title"] + ", version " + str(version))
+            except Exception:
+                log.exception("Error when retrieving " + page["title"] + ", version " + str(version))
 
     # sort everything by date and convert
     pages.sort(key=lambda page: page["updated_on"])
@@ -235,7 +241,7 @@ def perform_migrate_issues(args):
     gitlab = GitlabClient(args.gitlab_key, args.no_verify)
 
     redmine_project = RedmineProject(args.redmine_project_url, redmine)
-    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab)
+    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab, base_url=args.gitlab_url)
 
     gitlab_instance = gitlab_project.get_instance()
     if (args.project_members_only):
@@ -294,7 +300,7 @@ def perform_migrate_issues(args):
                 created = gitlab_project.create_issue(data, meta, gitlab.get_auth_headers())
                 last_iid = created['iid']
                 log.info('#{iid} {title}'.format(**created))
-            except:
+            except Exception:
                 log.info('create issue "{}" failed'.format(data['title']))
                 raise
 
@@ -306,7 +312,7 @@ def perform_migrate_iid(args):
     # gitlab-rails dbconsole
 
     gitlab = GitlabClient(args.gitlab_key, args.no_verify)
-    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab)
+    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab, base_url=args.gitlab_url)
     gitlab_project_id = gitlab_project.get_id()
 
     regex_saved_iid = r'-RM-([0-9]+)-MR-(.*)'
@@ -345,6 +351,12 @@ def perform_migrate_iid(args):
             regex=regex_saved_iid, project_id=gitlab_project_id)
         out2 = sql.run_query(sql_cmd2)
 
+        # Advance the internal iid allocator so new issues don't reuse low iids
+        # that would collide with the migrated ones (issue #63).
+        sql_cmd3 = sql.UPDATE_INTERNAL_ID_ISSUES.format(
+            project_id=gitlab_project_id)
+        sql.run_query(sql_cmd3)
+
         try:
             m = re.match(
                 r'\s*(\d+)\s*', output,
@@ -360,7 +372,7 @@ def perform_delete_issues(args):
     """ Delete all issues in the gitlab repo
     """
     gitlab = GitlabClient(args.gitlab_key, args.no_verify)
-    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab)
+    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab, base_url=args.gitlab_url)
 
     gitlab_issues = gitlab_project.get_issues()
     log.debug('Got {} issue(s) from gitlab.'.format(len(gitlab_issues)))
@@ -374,7 +386,7 @@ def perform_migrate_roadmap(args):
     gitlab = GitlabClient(args.gitlab_key, args.no_verify)
 
     redmine_project = RedmineProject(args.redmine_project_url, redmine)
-    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab)
+    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab, base_url=args.gitlab_url)
 
     checks = [
         #(check_no_milestone, 'Gitlab project has no pre-existing milestone'),
@@ -399,11 +411,8 @@ def perform_redirect(args):
     redmine = RedmineClient(args.redmine_key, args.no_verify)
     redmine_project = RedmineProject(args.redmine_project_url, redmine)
 
-    # get issues
-    if hasattr(args, 'issue_ids'):
-        redmine_issues = redmine_project.get_issues(args.issue_ids)
-    else:
-        redmine_issues = redmine_project.get_issues()
+    # get issues (optionally filtered by --issue-ids)
+    redmine_issues = redmine_project.get_issues(args.issue_ids or "")
 
     print('# uncomment next line to enable RewriteEngine')
     print('# RewriteEngine On')
