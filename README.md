@@ -308,21 +308,24 @@ runs the full Python × Redmine × GitLab matrix on a schedule / manual dispatch
 Using the Docker image
 ----------------------
 
-The repository ships a small image whose entrypoint is `migrate-rg`. Build it:
+Pull the pre-built, multi-arch (amd64/arm64) image from the GitHub Container
+Registry — published by `.github/workflows/build-docker.yml`:
 
-    docker build -t migrate-rg .
+    docker pull ghcr.io/redmine-gitlab-migrator/redmine-gitlab-migrator:latest
 
-Images are also published to the GitHub Container Registry by
-`.github/workflows/build-docker.yml`.
+or build it yourself:
 
-Run a subcommand by appending it to `docker run` (no arguments prints `--help`):
+    docker build -t ghcr.io/redmine-gitlab-migrator/redmine-gitlab-migrator .
 
-    docker run --rm migrate-rg \
+The image's entrypoint is `migrate-rg`; append any subcommand to `docker run`
+(with no arguments it prints `--help`):
+
+    docker run --rm ghcr.io/redmine-gitlab-migrator/redmine-gitlab-migrator \
       roadmap --redmine-key xxxx --gitlab-key xxxx \
       https://redmine.example.com/projects/myproject \
       https://git.example.com/mygroup/myproject
 
-    docker run --rm migrate-rg \
+    docker run --rm ghcr.io/redmine-gitlab-migrator/redmine-gitlab-migrator \
       issues --redmine-key xxxx --gitlab-key xxxx \
       https://redmine.example.com/projects/myproject \
       https://git.example.com/mygroup/myproject
