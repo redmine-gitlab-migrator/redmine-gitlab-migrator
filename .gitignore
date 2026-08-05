@@ -16,3 +16,7 @@ srv/
 .env
 keys.yml
 users.yml
+
+# e2e test artifacts
+.venv-e2e/
+e2e/seed/out/

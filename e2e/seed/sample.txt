@@ -1,0 +1,3 @@
+This is a sample attachment used by the e2e migration test.
+It should end up referenced in the migrated GitLab issue's description
+under an "Uploads:" section.

@@ -1,0 +1,3 @@
+# Extra deps for the e2e suite (on top of the package's own install_requires).
+pytest>=7
+requests>=2.25
