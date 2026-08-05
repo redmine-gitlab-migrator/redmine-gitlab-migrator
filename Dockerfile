@@ -1,18 +1,28 @@
-FROM gitlab/gitlab-ce:latest
+ARG PANDOC_VERSION=3.10.1
 
-ENV PANDOC_BIN=https://github.com/jgm/pandoc/releases/download/2.10.1/pandoc-2.10.1-1-amd64.deb
+FROM python:3.14-slim AS build
 
-RUN apt-get update && apt-get install -y \
-    sudo
-RUN wget -q ${PANDOC_BIN} && \
-    dpkg -i `basename ${PANDOC_BIN}` && \
-    rm -f `basename ${PANDOC_BIN}`
+WORKDIR /src
+COPY . .
+RUN python -m venv /opt/venv \
+ && /opt/venv/bin/pip install --no-cache-dir .
 
-COPY . /opt/redmine-gitlab-migrator
-RUN cd /opt/redmine-gitlab-migrator && \
-    python3 -m venv venv && \
-    . venv/bin/activate && \
-    python setup.py install && \
-    echo "#!/bin/sh\n. /opt/redmine-gitlab-migrator/venv/bin/activate\nmigrate-rg \$@" \
-    > /usr/local/bin/migrate-rg && \
-    chmod +x /usr/local/bin/migrate-rg
+ARG PANDOC_VERSION
+ARG TARGETARCH
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl \
+ && curl -fsSL -o /opt/pandoc.deb \
+      "https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-1-${TARGETARCH}.deb"
+
+FROM python:3.14-slim
+
+COPY --from=build /opt/pandoc.deb /tmp/pandoc.deb
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git ca-certificates /tmp/pandoc.deb \
+ && rm -rf /tmp/pandoc.deb /var/lib/apt/lists/*
+
+COPY --from=build /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+ENTRYPOINT ["migrate-rg"]
+CMD ["--help"]
