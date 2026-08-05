@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch: {}
+  schedule:
+    # Also run the full matrix weekly (Mondays 03:00 UTC).
+    - cron: "0 3 * * 1"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Latest pandoc release. Bump alongside the Dockerfile.
+  PANDOC_VERSION: "3.10.1"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Fast unit tests across all currently-supported Python versions. Runs on
+  # every push and PR.
+  # ---------------------------------------------------------------------------
+  unit:
+    name: unit (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install pandoc ${{ env.PANDOC_VERSION }}
+        run: |
+          curl -fsSL -o /tmp/pandoc.deb \
+            "https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-1-amd64.deb"
+          sudo dpkg -i /tmp/pandoc.deb
+      - name: Install package + test deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . pytest
+      - name: Run unit tests
+        run: pytest -q
+
+  # ---------------------------------------------------------------------------
+  # Full end-to-end matrix over Python x Redmine x GitLab. Boots real Redmine +
+  # GitLab services for every cell, so it is slow — it runs on every push/PR as
+  # well as on the weekly schedule / manual dispatch.
+  # ---------------------------------------------------------------------------
+  e2e:
+    name: e2e (py${{ matrix.python-version }} · redmine ${{ matrix.redmine }} · gitlab ${{ matrix.gitlab }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        # Currently-supported versions (as of 2026-07). Expand the lists to add
+        # combinations; the compose file reads REDMINE_TAG / GITLAB_TAG.
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        redmine: ["6.1", "7.0"]
+        gitlab: ["18.11.6-ce.0", "19.1.1-ce.0"]
+    env:
+      REDMINE_TAG: ${{ matrix.redmine }}
+      GITLAB_TAG: ${{ matrix.gitlab }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install pandoc ${{ env.PANDOC_VERSION }}
+        run: |
+          curl -fsSL -o /tmp/pandoc.deb \
+            "https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-1-amd64.deb"
+          sudo dpkg -i /tmp/pandoc.deb
+      - name: Install package + e2e deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . -r e2e/requirements-e2e.txt
+      - name: Run e2e suite
+        run: pytest e2e -m e2e -q
+      - name: Dump container logs on failure
+        if: failure()
+        run: docker compose -f e2e/docker-compose.e2e.yml logs --tail 100 || true
