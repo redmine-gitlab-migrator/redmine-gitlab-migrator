@@ -27,6 +27,23 @@ UPDATE issues SET
 WHERE title ~* '{regex}' AND project_id={project_id};
 """
 
+# After rewriting the iids we must also advance GitLab's per-project iid
+# allocator (the internal_ids table, usage=0 is "issues"). Otherwise the next
+# newly-created issue reuses a low iid that will eventually collide with the
+# migrated ones. See https://github.com/redmine-gitlab-migrator/redmine-gitlab-migrator/issues/63
+#
+# The allocator row is keyed by project_id on older GitLab and by the project's
+# ProjectNamespace (internal_ids.namespace_id = projects.project_namespace_id)
+# on newer GitLab; match either so the fix works across versions.
+UPDATE_INTERNAL_ID_ISSUES = r"""
+UPDATE internal_ids SET
+  last_value = (SELECT MAX(iid) FROM issues WHERE project_id={project_id})
+WHERE usage=0 AND (
+  project_id={project_id}
+  OR namespace_id = (SELECT project_namespace_id FROM projects WHERE id={project_id})
+);
+"""
+
 
 def run_query(
         cmd,
