@@ -382,7 +382,7 @@ class FakeGitlabClient:
             ]
 
         elif (url.endswith('/projects/3/members') or
-              url.endswith('/projects/diaspora%2Fdiaspora-project-site/members')):
+              url.endswith('/projects/diaspora%2Fdiaspora-project-site/members/all')):
             return [JACK, JOHN]
 
         elif (url.endswith('/projects/6') or
@@ -432,7 +432,7 @@ class FakeGitlabClient:
               url.endswith('/projects/brightbox%2Fpuppet/issues')):
             return []
 
-        elif (url.endswith('/projects/6/members') or	
+        elif (url.endswith('/projects/6/members') or
               url.endswith('/projects/brightbox%2Fpuppet/members')):
             return []
 

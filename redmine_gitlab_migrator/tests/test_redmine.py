@@ -12,7 +12,7 @@ class RedmineTestCase(unittest.TestCase):
         project = RedmineProject(
             'http://localhost:9000/projects/diaspora-site',
             self.client)
-        issues = project.get_all_issues()
+        issues = project.get_issues()
         self.assertEqual(len(issues), 2)
         self.assertEqual(len(issues[0].get('journals', [])), 0)
         self.assertEqual(len(issues[1].get('journals', [])), 2)
@@ -26,7 +26,7 @@ class RedmineTestCase(unittest.TestCase):
             'http://localhost:9000/projects/puppet',
             self.client)
 
-        self.assertEqual(len(project_1.get_participants()), 1)
+        self.assertEqual(len(project_1.get_participants()), 2)
         self.assertIn('@', project_1.get_participants()[0]['mail'])
         self.assertEqual(len(project_2.get_participants()), 0)
 

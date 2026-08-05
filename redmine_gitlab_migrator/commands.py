@@ -8,7 +8,7 @@ from redmine_gitlab_migrator.redmine import RedmineProject, RedmineClient
 from redmine_gitlab_migrator.gitlab import GitlabProject, GitlabClient
 from redmine_gitlab_migrator.converters import convert_issue, convert_version, load_user_dict
 from redmine_gitlab_migrator.logger import setup_module_logging
-from redmine_gitlab_migrator.wiki import TextileConverter, WikiPageConverter
+from redmine_gitlab_migrator.wiki import TextileConverter, NopConverter, WikiPageConverter
 from redmine_gitlab_migrator import sql
 
 
@@ -66,6 +66,11 @@ def parse_args():
             '--gitlab-key',
             required=True,
             help="Gitlab administrator API key")
+        i.add_argument(
+            '--gitlab-url',
+            required=False, default=None,
+            help="Base URL of the GitLab instance (e.g. https://host/gitlab) "
+                 "when GitLab is not served at the root of the host")
 
     for i in (parser_issues, parser_pages, parser_roadmap, parser_iid, parser_redirect, delete_issues):
         i.add_argument(
@@ -83,15 +88,21 @@ def parse_args():
             required=False, action='store_false', default=True,
             help="disable SSL certificate verification")
 
+    for i in (parser_issues, parser_pages):
+        i.add_argument(
+            '--no-textile',
+            required=False, action='store_true',
+            help="Do not perform textile conversion, in case Markdown is used in Redmine")
+
     parser_issues.add_argument(
         '--closed-states',
         required=False,
-        help="comma seperated list of redmine states that close an issue, default closed,rejected")
+        help="comma separated list of redmine states that close an issue, default closed,rejected")
 
     parser_issues.add_argument(
         '--custom-fields',
         required=False,
-        help="comma seperated list of redmine custom filds to migrate")
+        help="comma separated list of redmine custom fields to migrate")
 
     parser_issues.add_argument(
         '--user-dict',
@@ -107,6 +118,12 @@ def parse_args():
         '--keep-id',
         required=False, action='store_true', default=False,
         help="create and delete empty issues for gaps, useful when no ssh is possible (e.g. gitlab.com)")
+
+    for i in (parser_issues, parser_redirect):
+        i.add_argument(
+            '--issue-ids',
+            required=False, default=None,
+            help="Comma separated issue IDs, to migrate specific issues")
 
     parser_issues.add_argument(
         '--keep-title',
@@ -128,7 +145,7 @@ def parse_args():
         '--archive-account', dest='archive_acc',
         required=False,
         default=None,
-        help="if account doesn't exists in GitLab use this account as default")
+        help="if account doesn't exist in GitLab use this account as default")
 
     parser_pages.add_argument(
         '--gitlab-wiki',
@@ -182,8 +199,13 @@ def perform_migrate_pages(args):
     redmine = RedmineClient(args.redmine_key, args.no_verify)
     redmine_project = RedmineProject(args.redmine_project_url, redmine)
 
+    if args.no_textile:
+        textile_converter = NopConverter()
+    else:
+        textile_converter = TextileConverter()
+
     # Get copy of GitLab wiki repository
-    wiki = WikiPageConverter(args.gitlab_wiki)
+    wiki = WikiPageConverter(args.gitlab_wiki, textile_converter)
 
     # convert all pages including history
     pages = []
@@ -194,8 +216,8 @@ def perform_migrate_pages(args):
             try:
                 full_page = redmine_project.get_page(page["title"], version)
                 pages.append(full_page)
-            except:
-                log.error("Error when retrieving " + page["title"] + ", version " + str(version))
+            except Exception:
+                log.exception("Error when retrieving " + page["title"] + ", version " + str(version))
 
     # sort everything by date and convert
     pages.sort(key=lambda page: page["updated_on"])
@@ -219,21 +241,28 @@ def perform_migrate_issues(args):
     gitlab = GitlabClient(args.gitlab_key, args.no_verify)
 
     redmine_project = RedmineProject(args.redmine_project_url, redmine)
-    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab)
+    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab, base_url=args.gitlab_url)
 
     gitlab_instance = gitlab_project.get_instance()
     if (args.project_members_only):
         gitlab_users_index = gitlab_project.get_members_index()
     else:
         gitlab_users_index = gitlab_instance.get_users_index()
-    redmine_users_index = redmine_project.get_users_index()
+    redmine_users_index = redmine_project.get_users_index(args.issue_ids)
     milestones_index = gitlab_project.get_milestones_index()
-    textile_converter = TextileConverter()
+    if args.no_textile:
+        textile_converter = NopConverter()
+    else:
+        textile_converter = TextileConverter()
 
     log.debug('GitLab milestones are: {}'.format(', '.join(milestones_index) + ' '))
+    if args.sudo:
+        migrator_user = 'root'
+    else:
+        migrator_user = gitlab_instance.get_user()['username']
     # get issues
     log.info('Getting redmine issues')
-    issues = redmine_project.get_all_issues()
+    issues = redmine_project.get_issues(args.issue_ids)
     if args.initial_id:
         issues = [issue for issue in issues if int(args.initial_id) <= issue['id']]
 
@@ -241,7 +270,7 @@ def perform_migrate_issues(args):
     log.info('Converting issues')
     issues_data = (
         convert_issue(args.redmine_key,
-            i, redmine_users_index, gitlab_users_index, milestones_index, closed_states, custom_fields, textile_converter,
+            i, redmine_users_index, gitlab_users_index, milestones_index, closed_states, custom_fields, textile_converter, migrator_user,
             args.keep_id or args.keep_title, args.sudo, args.archive_acc)
         for i in issues)
 
@@ -266,23 +295,12 @@ def perform_migrate_issues(args):
 
         else:
             if args.keep_id:
-                try:
-                    fake_meta = {'uploads': [], 'notes': [], 'must_close': False}
-                    if args.sudo:
-                        fake_meta['sudo_user'] = meta['sudo_user']
-                    while redmine_id > last_iid + 1:
-                        created = gitlab_project.create_issue({'title': 'fake'}, fake_meta)
-                        last_iid = created['iid']
-                        gitlab_project.delete_issue(created['iid'])
-                        log.info('#{iid} {title}'.format(**created))
-                except:
-                    log.info('create issue "{}" failed'.format('fake'))
-                    raise
+                data['iid'] = redmine_id
             try:
                 created = gitlab_project.create_issue(data, meta, gitlab.get_auth_headers())
                 last_iid = created['iid']
                 log.info('#{iid} {title}'.format(**created))
-            except:
+            except Exception:
                 log.info('create issue "{}" failed'.format(data['title']))
                 raise
 
@@ -294,7 +312,7 @@ def perform_migrate_iid(args):
     # gitlab-rails dbconsole
 
     gitlab = GitlabClient(args.gitlab_key, args.no_verify)
-    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab)
+    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab, base_url=args.gitlab_url)
     gitlab_project_id = gitlab_project.get_id()
 
     regex_saved_iid = r'-RM-([0-9]+)-MR-(.*)'
@@ -333,6 +351,12 @@ def perform_migrate_iid(args):
             regex=regex_saved_iid, project_id=gitlab_project_id)
         out2 = sql.run_query(sql_cmd2)
 
+        # Advance the internal iid allocator so new issues don't reuse low iids
+        # that would collide with the migrated ones (issue #63).
+        sql_cmd3 = sql.UPDATE_INTERNAL_ID_ISSUES.format(
+            project_id=gitlab_project_id)
+        sql.run_query(sql_cmd3)
+
         try:
             m = re.match(
                 r'\s*(\d+)\s*', output,
@@ -348,7 +372,7 @@ def perform_delete_issues(args):
     """ Delete all issues in the gitlab repo
     """
     gitlab = GitlabClient(args.gitlab_key, args.no_verify)
-    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab)
+    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab, base_url=args.gitlab_url)
 
     gitlab_issues = gitlab_project.get_issues()
     log.debug('Got {} issue(s) from gitlab.'.format(len(gitlab_issues)))
@@ -362,7 +386,7 @@ def perform_migrate_roadmap(args):
     gitlab = GitlabClient(args.gitlab_key, args.no_verify)
 
     redmine_project = RedmineProject(args.redmine_project_url, redmine)
-    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab)
+    gitlab_project = GitlabProject(args.gitlab_project_url, gitlab, base_url=args.gitlab_url)
 
     checks = [
         #(check_no_milestone, 'Gitlab project has no pre-existing milestone'),
@@ -387,8 +411,8 @@ def perform_redirect(args):
     redmine = RedmineClient(args.redmine_key, args.no_verify)
     redmine_project = RedmineProject(args.redmine_project_url, redmine)
 
-    # get issues
-    redmine_issues = redmine_project.get_all_issues()
+    # get issues (optionally filtered by --issue-ids)
+    redmine_issues = redmine_project.get_issues(args.issue_ids or "")
 
     print('# uncomment next line to enable RewriteEngine')
     print('# RewriteEngine On')

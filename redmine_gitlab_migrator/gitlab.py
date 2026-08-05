@@ -7,8 +7,6 @@ from urllib.request import urlopen
 
 from redmine_gitlab_migrator.converters import redmine_username_to_gitlab_username
 
-from json.decoder import JSONDecodeError
-
 log = logging.getLogger(__name__)
 
 class GitlabClient(APIClient):
@@ -21,9 +19,14 @@ class GitlabClient(APIClient):
         kwargs['params']['per_page'] = self.MAX_PER_PAGE
 
         result = super().get(*args, **kwargs)
-        while (len(result) > 0 and len(result) % self.MAX_PER_PAGE == 0):
+        page = result
+        # Stop when a page is not full (fewer than per_page items). Using the
+        # per-page length rather than the accumulated total avoids an infinite
+        # loop when the total is an exact multiple of per_page.
+        while len(page) == self.MAX_PER_PAGE:
             kwargs['params']['page'] += 1
-            result.extend(super().get(*args, **kwargs))
+            page = super().get(*args, **kwargs)
+            result.extend(page)
         return result
 
     def get_auth_headers(self):
@@ -37,6 +40,9 @@ class GitlabInstance:
     def __init__(self, url, client):
         self.url = url.strip('/')  # normalize URL
         self.api = client
+
+    def get_user(self):
+        return self.api.get('{}/user'.format(self.url))
 
     def get_all_users(self):
         return self.api.get('{}/users'.format(self.url))
@@ -66,39 +72,37 @@ class GitlabProject(Project):
     REGEX_PROJECT_URL = re.compile(
         r'^(?P<base_url>https?://[^/]+/)(?P<namespace>[\.\w\._/-]+)/(?P<project_name>[\w\._-]+)$')
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, url, client, base_url=None):
+        super().__init__(url, client)
         self.group_id = None
 
-        self.instance_url = '{}/api/v4'.format(
-            self._url_match.group('base_url'))
+        # `base_url` is the GitLab instance root (e.g. https://host/gitlab). The
+        # URL regex alone can't tell a sub-path install (host/gitlab/group/proj)
+        # from a nested namespace (host/group/subgroup/proj), so when GitLab is
+        # not served at the host root the caller must say where it lives. See
+        # https://github.com/redmine-gitlab-migrator/redmine-gitlab-migrator/issues/42
+        if base_url:
+            base = base_url.rstrip('/')
+            prefix = base + '/'
+            if not self.public_url.startswith(prefix):
+                raise ValueError(
+                    '{} is not under the given gitlab base url {}'.format(
+                        self.public_url, base))
+            path_with_namespace = self.public_url[len(prefix):]
+        else:
+            # base_url regex group keeps a trailing '/'; drop it so we don't
+            # build a '//api/v4'.
+            base = self._url_match.group('base_url').rstrip('/')
+            # fetch project_id via api, thanks to lewicki-pk
+            # https://github.com/oasiswork/redmine-gitlab-migrator/pull/2
+            # but also take into account that the same project may exist in
+            # different namespaces
+            path_with_namespace = '{namespace}/{project_name}'.format(
+                **self._url_match.groupdict())
 
-        # fetch project_id via api, thanks to lewicki-pk
-        # https://github.com/oasiswork/redmine-gitlab-migrator/pull/2
-        # but also take int account, that there might be the same project in different namespaces
-        path_with_namespace = (
-            '{namespace}/{project_name}'.format(
-                **self._url_match.groupdict()))
-        projectId = -1
-        groupId = None
-
-        projects_info = self.api.get('{}/projects?owned=true'.format(self.instance_url))
-
-        for project_attributes in projects_info:
-            if project_attributes.get('path_with_namespace') == path_with_namespace:
-                projectId = project_attributes.get('id')
-                if project_attributes.get('namespace').get('kind') == 'group':
-                    groupId = project_attributes.get('namespace').get('id')
-
-        self.project_id = projectId
-        if projectId == -1 :
-            raise ValueError('Could not get project_id for path_with_namespace: {}'.format(path_with_namespace))
-        if groupId:
-            self.group_id = groupId
-
-        self.api_url = (
-            '{base_url}api/v4/projects/'.format(
-                **self._url_match.groupdict())) + str(projectId)
+        self.instance_url = '{}/api/v4'.format(base)
+        self.api_url = '{}/api/v4/projects/{}'.format(
+            base, urllib.parse.quote(path_with_namespace, safe=''))
 
 
     def is_repository_empty(self):
@@ -121,7 +125,7 @@ class GitlabProject(Project):
            try:
                files = [("file", (u['filename'], urlopen(u['content_url']), u['content_type']))]
            except urllib.error.HTTPError as e:
-               log.warn("{} can't upload due to error: {}!".format(u['content_url'], e))
+               log.warning("{} can't upload due to error: {}!".format(u['content_url'], e))
 
 
            try:
@@ -138,7 +142,7 @@ class GitlabProject(Project):
                    upload = self.api.post(uploads_url, files=files)
                    l.append('{} {}'.format(upload['markdown'], u['description']))
                except urllib.error.HTTPError as e:
-                   log.warn("{} can't upload due to error: {}!".format(u['content_url'], e))
+                   log.warning("{} can't upload due to error: {}!".format(u['content_url'], e))
 
 
         return "\n  * ".join(l)
@@ -162,7 +166,9 @@ class GitlabProject(Project):
         uploads_text = self.uploads_to_string(meta['uploads'])
         if len(uploads_text) > 0:
            data['description'] = "{}\n* Uploads:\n  * {}".format(data['description'], uploads_text)
-        headers = auth_header
+        # Copy so the SUDO header we set below doesn't leak back into the
+        # shared auth_header (and thus into subsequent issues/notes).
+        headers = dict(auth_header)
         if 'sudo_user' in meta:
             headers['SUDO'] = meta['sudo_user']
         issues_url = '{}/issues'.format(self.api_url)
@@ -171,8 +177,13 @@ class GitlabProject(Project):
             issue = self.api.post(
                 issues_url, data=data, headers=headers)
         except requests.exceptions.HTTPError as e:
-            log.error("Can't convert issue due to error: {}".format(e.response.content))
-            exit()
+            log.error("Can't create issue due to error: {}".format(e.response.content))
+            if e.response.status_code == 404 and 'SUDO' in headers:
+                log.error(
+                    "Hint: the impersonated user '{}' may not be a member of "
+                    "the target project — GitLab returns 404 when the SUDO user "
+                    "cannot see it.".format(headers['SUDO']))
+            raise
 
 
         issue_url = '{}/{}'.format(issues_url, issue['iid'])
@@ -180,12 +191,20 @@ class GitlabProject(Project):
         # Handle issues notes
         issue_notes_url = '{}/notes'.format(issue_url, 'notes')
         for note_data, note_meta in meta['notes']:
-            note_headers = auth_header
+            note_headers = dict(auth_header)
             if 'sudo_user' in note_meta:
                 note_headers['SUDO'] = note_meta['sudo_user']
             self.api.post(
                 issue_notes_url, data=note_data,
                 headers=note_headers)
+
+        # Handle estimated and spent time
+        if meta['human_time_estimate'] is not None and meta['human_time_estimate'] != 0.0:
+            time_estimate_url = '{}/time_estimate?duration={}h'.format(issue_url, meta['human_time_estimate'])
+            self.api.post(time_estimate_url)
+        if meta['human_total_time_spent'] is not None and meta['human_total_time_spent'] != 0.0:
+            time_spent_url = '{}/add_spent_time?duration={}h'.format(issue_url, meta['human_total_time_spent'])
+            self.api.post(time_spent_url)
 
         # Handle closed status
         if meta['must_close']:
@@ -195,10 +214,8 @@ class GitlabProject(Project):
 
     def delete_issue(self, iid):
         issue_url = '{}/issues/{}'.format(self.api_url, iid)
-        try:
-            self.api.delete(issue_url)
-        except JSONDecodeError:
-            True
+        # DELETE returns 204 with an empty body; APIClient handles that.
+        self.api.delete(issue_url)
 
     def create_milestone(self, data, meta):
         """ High-level milestone creation
@@ -227,7 +244,7 @@ class GitlabProject(Project):
         return self.api.get('{}/issues'.format(self.api_url))
 
     def get_members(self):
-        project_members = self.api.get('{}/members'.format(self.api_url))
+        project_members = self.api.get('{}/members/all'.format(self.api_url))
         if self.group_id:
             group_members = self.get_instance().get_group_members(self.group_id)
             return project_members + group_members
@@ -273,4 +290,3 @@ class GitlabProject(Project):
         """ Return a GitlabInstance
         """
         return GitlabInstance(self.instance_url, self.api)
-

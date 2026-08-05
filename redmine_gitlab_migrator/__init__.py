@@ -1,10 +1,12 @@
 import logging
 
+import time
+
 import requests
 
 # http://stackoverflow.com/a/28002687/98491
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 log = logging.getLogger(__name__)
 
@@ -33,11 +35,35 @@ class APIClient:
         log.debug('HTTP REQUEST {} {} {}'.format(
             func, args, kwargs))
         kwargs = self.add_auth_headers(kwargs)
-        resp = func(*args, **kwargs)
-        resp.raise_for_status()
-        ret = resp.json()
-        log.debug('HTTP RESPONSE {}'.format(ret))
-        return ret
+
+        retries = 3
+        retry_wait = 5
+        for tri in range(1,retries+1):
+            try:
+                resp = func(*args, **kwargs)
+                resp.raise_for_status()
+            except requests.HTTPError as e:
+                try: 
+                    ret = resp.json()
+                except ValueError:
+                    ret = resp.text
+                log.debug('HTTP RESPONSE {}'.format(ret))
+                if retries == tri:
+                    raise e
+                else:
+                    log.exception("HTTPError retry in {} seconds".format(retry_wait))
+                    time.sleep(retry_wait)
+                    log.info("Retry {}".format(tri+1))
+                    continue
+            # Some endpoints (e.g. DELETE) legitimately return an empty body.
+            if resp.status_code == 204 or not resp.content:
+                return None
+            try:
+                return resp.json()
+            except ValueError:
+                raise Exception(
+                    f"Invalid JSON response: status={resp.status_code}, body={resp.text[:200]}"
+                )
 
     def get(self, *args, **kwargs):
         return self._req(requests.get, *args, **kwargs)

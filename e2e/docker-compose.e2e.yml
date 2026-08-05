@@ -1,0 +1,77 @@
+# End-to-end test stack: a real Redmine (source) and a real GitLab (target).
+#
+# Versions are PINNED on purpose — the seed scripts and the assertions poke at
+# model internals / API shapes that drift between releases. Bump deliberately.
+#
+# Brought up by e2e/run.sh (or the pytest `stack` fixture in conftest.py).
+
+services:
+  redmine-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: redmine
+      POSTGRES_USER: redmine
+      POSTGRES_PASSWORD: redmine
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U redmine"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redmine:
+    # Tag is matrix-driven in CI (REDMINE_TAG); default is a currently-supported
+    # release. 5.1 and earlier are EOL.
+    image: redmine:${REDMINE_TAG:-6.1}
+    depends_on:
+      redmine-db:
+        condition: service_healthy
+    environment:
+      REDMINE_DB_POSTGRES: redmine-db
+      REDMINE_DB_DATABASE: redmine
+      REDMINE_DB_USERNAME: redmine
+      REDMINE_DB_PASSWORD: redmine
+      REDMINE_SECRET_KEY_BASE: e2e-secret-key-base-not-for-production
+      # Redmine 7.0 / Rails 8 reads the standard SECRET_KEY_BASE for
+      # `rails runner` (run via `exec`, which bypasses the image entrypoint that
+      # would otherwise set it from REDMINE_SECRET_KEY_BASE).
+      SECRET_KEY_BASE: e2e-secret-key-base-not-for-production
+    ports:
+      - "3000:3000"
+    volumes:
+      # Seed script + assets, mounted read-only. Run with:
+      #   docker compose exec redmine bundle exec rails runner /seed/seed_redmine.rb
+      - ./seed:/seed:ro
+    healthcheck:
+      # The redmine image has no curl/wget, so probe with its own Ruby runtime.
+      test: ["CMD-SHELL", "ruby -e \"require 'net/http'; exit(Net::HTTP.get_response(URI('http://localhost:3000/')).is_a?(Net::HTTPSuccess) ? 0 : 1)\""]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+
+  gitlab:
+    # Tag is matrix-driven in CI (GITLAB_TAG); default is a currently-supported
+    # release.
+    image: gitlab/gitlab-ce:${GITLAB_TAG:-18.11.6-ce.0}
+    shm_size: "256m"
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://localhost:8929'
+        nginx['listen_port'] = 8929
+        # Must pass GitLab's strength check: no dictionary words (e.g. "password").
+        gitlab_rails['initial_root_password'] = 'Rt7Kp2mVx9qZw4bJ3n'
+        # Trim the footprint so this fits on a laptop / CI runner.
+        puma['worker_processes'] = 2
+        sidekiq['max_concurrency'] = 5
+        prometheus_monitoring['enable'] = false
+        gitlab_rails['usage_ping_enabled'] = false
+    ports:
+      - "8929:8929"
+    volumes:
+      - ./seed:/seed:ro
+    healthcheck:
+      # GitLab is SLOW to boot (3-6 min). This gate is what everything waits on.
+      test: ["CMD", "/opt/gitlab/bin/gitlab-healthcheck", "--fail", "--max-time", "10"]
+      interval: 15s
+      timeout: 15s
+      retries: 40
+      start_period: 300s
