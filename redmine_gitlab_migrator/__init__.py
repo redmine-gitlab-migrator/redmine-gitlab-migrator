@@ -5,8 +5,8 @@ import time
 import requests
 
 # http://stackoverflow.com/a/28002687/98491
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 log = logging.getLogger(__name__)
 
@@ -55,6 +55,9 @@ class APIClient:
                     time.sleep(retry_wait)
                     log.info("Retry {}".format(tri+1))
                     continue
+            # Some endpoints (e.g. DELETE) legitimately return an empty body.
+            if resp.status_code == 204 or not resp.content:
+                return None
             try:
                 return resp.json()
             except ValueError:

@@ -7,14 +7,30 @@ import unicodedata
 
 log = logging.getLogger(__name__)
 
+MIN_PANDOC_VERSION = (1, 17)
+
+
+def _pandoc_version_tuple():
+    """ '3.10.1' -> (3, 10, 1); tolerant of non-numeric suffixes. """
+    parts = []
+    for chunk in pypandoc.get_pandoc_version().split('.'):
+        digits = ''.join(c for c in chunk if c.isdigit())
+        parts.append(int(digits) if digits else 0)
+    return tuple(parts)
+
+
+def check_pandoc_version():
+    """ Numeric version check (a string compare mishandles e.g. 1.2 vs 1.17). """
+    if _pandoc_version_tuple() < MIN_PANDOC_VERSION:
+        log.error('You need at least pandoc {}, download from '
+                  'http://pandoc.org/installing.html'.format(
+                      '.'.join(str(n) for n in MIN_PANDOC_VERSION)))
+        exit(1)
+
+
 class TextileConverter():
     def __init__(self):
-        # make sure we use at least version 17 of pandoc
-        # TODO: fix this test, it will not work properly for version 1.2 or 1.100
-        version = pypandoc.get_pandoc_version()
-        if (version < "1.17"):
-            log.error('You need at least pandoc 1.17.0, download from http://pandoc.org/installing.html')
-            exit(1)
+        check_pandoc_version()
 
         # precompile regular expressions
         self.regexWikiLinkWithText = re.compile(r'\\\[\\\[\s*([^\]]*?)\s*\|\s*([^\]]*?)\s*\\\]\\\]')
@@ -127,12 +143,7 @@ class WikiPageConverter():
         self.repo_path = local_repo_path
         self.repo = Repo(local_repo_path)
 
-        # make sure we use at least version 17 of pandoc
-        # TODO: fix this test, it will not work properly for version 1.2 or 1.100
-        version = pypandoc.get_pandoc_version()
-        if (version < "1.17"):
-            log.error('You need at least pandoc 1.17.0, download from http://pandoc.org/installing.html')
-            exit(1)
+        check_pandoc_version()
 
         self.textile_converter = textile_converter
 

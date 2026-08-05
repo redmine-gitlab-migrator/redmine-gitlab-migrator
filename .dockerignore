@@ -11,6 +11,11 @@ dist/
 .idea/
 
 .git/
-docker-compose.yml
 Dockerfile
 srv/
+
+e2e/
+.github/
+.venv*/
+__pycache__/
+.pytest_cache/
