@@ -91,3 +91,22 @@ def test_issue3_group_assignee_becomes_label():
     data, meta, rid = _convert(issue)
     assert "assignee_id" not in data          # group is not a mappable user
     assert "DevTeam" in data["labels"].split(",")
+
+
+# --------------------------------------------------------------------------
+# #49 (PR) — Issue whose description is JSON null must not crash
+# https://github.com/redmine-gitlab-migrator/redmine-gitlab-migrator/pull/49
+# Redmine can return "description": null (not just "" or an absent key). The
+# textile converter then crashes on None.split(). Regression guard: a null
+# description converts cleanly and does not leak the literal string "None"
+# into the GitLab body. Uses the real TextileConverter to exercise the crash.
+# --------------------------------------------------------------------------
+def test_issue49_null_description_does_not_crash():
+    from redmine_gitlab_migrator.wiki import TextileConverter
+    redmine_users = {1: {"id": 1, "login": "root"}}
+    gitlab_users = {"root": {"id": 1, "username": "root"}}
+    data, meta, rid = convert_issue(
+        "apikey", _make_issue(description=None), redmine_users, gitlab_users,
+        {}, [], [], TextileConverter(), "root", keep_title=False, sudo=True,
+        archive_acc=None)
+    assert not data["description"].lstrip().startswith("None")
