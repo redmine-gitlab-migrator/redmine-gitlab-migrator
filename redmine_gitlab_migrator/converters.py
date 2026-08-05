@@ -227,16 +227,16 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     else:
         creator_text = ''
 
-    description = redmine_issue.get('description', "")
+    # Redmine may return the description as JSON null (not just an empty
+    # string or an absent key), which would crash the textile converter. Fall
+    # back to an empty string in every "no description" case.
+    description = redmine_issue.get('description') or ""
     if archive_acc is not None and archive_acc is author_login:
         if isFromAnonymous is True:
             description = "Archive from Anonymous user \n\n{}".format(description)
         else:
             description = "Archive from user: {}\n\n{}".format(redmine_issue['author']['name'], description)
-    if description:
-        converted_description = textile_converter.convert(description)
-    else:
-        converted_description = ""
+    converted_description = textile_converter.convert(description)
     if converted_description is False:
         converted_description = description
         log.error("Can't convert Redmine issue {} to markdown formatting! Use clear text!".format(
